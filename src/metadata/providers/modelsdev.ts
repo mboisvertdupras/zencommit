@@ -1,0 +1,145 @@
+import path from 'node:path';
+import type { ModelMetadata, MetadataProvider } from '../types.js';
+import { getCacheRoot } from '../../util/fs.js';
+import { isCacheFresh, readCache, writeCache } from '../cache.js';
+import type { MetadataConfig } from '../../config/types.js';
+import { getVerbosity, logVerbose } from '../../util/logger.js';
+
+const toNumberOrNull = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  return null;
+};
+
+const normalizeModelId = (providerId: string, modelId: string): string => {
+  if (modelId.includes('/')) {
+    return modelId;
+  }
+  return `${providerId}/${modelId}`;
+};
+
+const toStringSafe = (value: unknown, fallback: string): string =>
+  typeof value === 'string' && value.trim().length > 0 ? value : fallback;
+
+export const normalizeModelsDevData = (data: unknown): ModelMetadata[] => {
+  if (!data || typeof data !== 'object') {
+    return [];
+  }
+
+  const entries = Object.entries(data as Record<string, unknown>);
+  const models: ModelMetadata[] = [];
+
+  for (const [providerKey, providerValue] of entries) {
+    if (!providerValue || typeof providerValue !== 'object') {
+      continue;
+    }
+    const provider = providerValue as Record<string, unknown>;
+    const providerId = toStringSafe(provider.id, providerKey);
+    const providerModels = provider.models;
+    if (!providerModels || typeof providerModels !== 'object') {
+      continue;
+    }
+
+    for (const [modelKey, modelValue] of Object.entries(
+      providerModels as Record<string, unknown>,
+    )) {
+      if (!modelValue || typeof modelValue !== 'object') {
+        continue;
+      }
+      const model = modelValue as Record<string, unknown>;
+      const rawId = toStringSafe(model.id, modelKey);
+      const id = normalizeModelId(providerId, rawId);
+      const name = toStringSafe(model.name, rawId);
+      const limit = (model.limit ?? model.limits ?? {}) as Record<string, unknown>;
+      const limits = {
+        context: toNumberOrNull(limit.context),
+        input: toNumberOrNull(limit.input),
+        output: toNumberOrNull(limit.output),
+      };
+      const pricing = model.cost ?? model.pricing;
+      const capabilities = {
+        attachment: model.attachment,
+        reasoning: model.reasoning,
+        toolCall: model.tool_call,
+        structuredOutput: model.structured_output,
+        modalities: model.modalities,
+        family: model.family,
+        openWeights: model.open_weights,
+      };
+
+      models.push({ id, name, limits, pricing, capabilities });
+    }
+  }
+
+  return models;
+};
+
+export const createModelsDevProvider = (config: MetadataConfig): MetadataProvider => {
+  const cachePath = path.join(getCacheRoot(), 'zencommit', 'metadata', 'modelsdev.cache.json');
+  let cachedModels: ModelMetadata[] | null = null;
+
+  const loadModels = async (): Promise<ModelMetadata[]> => {
+    if (cachedModels) {
+      logVerbose(2, 'metadata: using in-memory models.dev cache');
+      return cachedModels;
+    }
+
+    const cache = await readCache(cachePath);
+    const cacheFresh =
+      cache && isCacheFresh(cache.mtimeMs, config.providers.modelsdev.cacheTtlHours);
+
+    if (cacheFresh && cache) {
+      logVerbose(2, `metadata: cache hit ${cachePath}`);
+      cachedModels = normalizeModelsDevData(cache.data);
+      return cachedModels;
+    }
+
+    try {
+      if (getVerbosity() >= 1) {
+        logVerbose(1, `metadata: fetching ${config.providers.modelsdev.url}`);
+      }
+      const response = await fetch(config.providers.modelsdev.url);
+      if (!response.ok) {
+        throw new Error(`models.dev responded with ${response.status}`);
+      }
+      const data = (await response.json()) as unknown;
+      await writeCache(cachePath, data);
+      logVerbose(2, `metadata: cache write ${cachePath}`);
+      cachedModels = normalizeModelsDevData(data);
+      return cachedModels;
+    } catch (error) {
+      if (cache) {
+        const staleNote = cacheFresh ? '' : ' (cache is stale)';
+        console.warn(`models.dev fetch failed, using cached metadata${staleNote}.`);
+        logVerbose(2, `metadata: cache fallback ${cachePath}${staleNote}`);
+        cachedModels = normalizeModelsDevData(cache.data);
+        return cachedModels;
+      }
+      throw error;
+    }
+  };
+
+  return {
+    async getModel(modelId: string) {
+      const models = await loadModels();
+      return models.find((model) => model.id === modelId) ?? null;
+    },
+    async search(query: string, limit = 20) {
+      const models = await loadModels();
+      const normalized = query.toLowerCase();
+      const results = models.filter((model) =>
+        `${model.id} ${model.name}`.toLowerCase().includes(normalized),
+      );
+      return results.slice(0, limit);
+    },
+    async list() {
+      const models = await loadModels();
+      return models;
+    },
+    async refresh() {
+      cachedModels = null;
+      await loadModels();
+    },
+  };
+};

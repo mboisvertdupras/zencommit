@@ -1,0 +1,188 @@
+import { generateObject, generateText, jsonSchema } from 'ai';
+import { resolveProviderAuth, resolveRuntimeSecrets } from '../auth/secrets.js';
+import { getVerbosity, logVerbose } from '../util/logger.js';
+import { resolveLanguageModel } from './providers.js';
+
+export interface CommitMessage {
+  subject: string;
+  body: string;
+}
+
+export interface GenerateInput {
+  modelId: string;
+  system: string;
+  user: string;
+  temperature: number;
+  maxOutputTokens: number;
+  timeoutMs: number;
+  maxSubjectChars: number;
+  style: 'conventional' | 'freeform';
+  openaiCompatible?: {
+    baseUrl?: string;
+    name?: string;
+  };
+}
+
+export interface GenerateDeps {
+  callModel?: (input: GenerateInput) => Promise<CommitMessage>;
+}
+
+const COMMIT_SCHEMA = jsonSchema<CommitMessage>({
+  type: 'object',
+  properties: {
+    subject: { type: 'string' },
+    body: { type: 'string' },
+  },
+  required: ['subject', 'body'],
+  additionalProperties: false,
+});
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return promise;
+  }
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Model call timed out')), timeoutMs),
+    ),
+  ]);
+};
+
+const normalizeOutput = (value: string): string => value.replace(/\r\n/g, '\n').trim();
+
+const resolveModel = (modelId: string, input: GenerateInput) =>
+  resolveLanguageModel(modelId, { openaiCompatible: input.openaiCompatible });
+
+const ensureAuth = async (modelId: string): Promise<void> => {
+  const auth = resolveProviderAuth(modelId);
+  if (!auth) {
+    return;
+  }
+  if (getVerbosity() >= 2) {
+    logVerbose(2, `auth: provider ${auth.id}, keys=${auth.envKeys.join(', ')}`);
+  }
+  const secrets = await resolveRuntimeSecrets(auth.envKeys);
+  const foundKeys = Object.keys(secrets);
+  for (const [key, value] of Object.entries(secrets)) {
+    process.env[key] = value;
+  }
+  if (auth.required && foundKeys.length === 0) {
+    const primary = auth.primaryEnvKey ?? auth.envKeys[0] ?? auth.id;
+    throw new Error(`Missing API key for ${primary}`);
+  }
+};
+
+const callModelOnce = async (
+  input: GenerateInput,
+  strictSubject = false,
+): Promise<CommitMessage> => {
+  await ensureAuth(input.modelId);
+  const model = resolveModel(input.modelId, input);
+  const userPrompt = strictSubject
+    ? `${input.user}\nSubject must be <= ${input.maxSubjectChars} characters.`
+    : input.user;
+
+  try {
+    const result = await withTimeout(
+      generateObject({
+        model,
+        schema: COMMIT_SCHEMA,
+        messages: [
+          { role: 'system', content: input.system },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: input.temperature,
+        maxTokens: input.maxOutputTokens,
+      }),
+      input.timeoutMs,
+    );
+    return {
+      subject: normalizeOutput(result.object.subject ?? ''),
+      body: normalizeOutput(result.object.body ?? ''),
+    };
+  } catch {
+    if (getVerbosity() >= 2) {
+      logVerbose(2, 'llm: structured output failed, falling back to text');
+    }
+    const textResult = await withTimeout(
+      generateText({
+        model,
+        messages: [
+          { role: 'system', content: input.system },
+          { role: 'user', content: userPrompt },
+        ],
+        temperature: input.temperature,
+        maxTokens: input.maxOutputTokens,
+      }),
+      input.timeoutMs,
+    );
+
+    const rawText = textResult.text ?? '';
+    try {
+      const parsed = JSON.parse(rawText) as CommitMessage;
+      return {
+        subject: normalizeOutput(parsed.subject ?? ''),
+        body: normalizeOutput(parsed.body ?? ''),
+      };
+    } catch {
+      if (getVerbosity() >= 2) {
+        logVerbose(2, 'llm: JSON parse failed, attempting repair');
+      }
+      const repairPrompt = `${userPrompt}\nReturn ONLY valid JSON matching the schema.`;
+      const repairResult = await withTimeout(
+        generateText({
+          model,
+          messages: [
+            { role: 'system', content: input.system },
+            { role: 'user', content: repairPrompt },
+          ],
+          temperature: input.temperature,
+          maxTokens: input.maxOutputTokens,
+        }),
+        input.timeoutMs,
+      );
+      const repaired = JSON.parse(repairResult.text ?? '') as CommitMessage;
+      return {
+        subject: normalizeOutput(repaired.subject ?? ''),
+        body: normalizeOutput(repaired.body ?? ''),
+      };
+    }
+  }
+};
+
+export const generateCommitMessage = async (
+  input: GenerateInput,
+  deps: GenerateDeps = {},
+): Promise<CommitMessage> => {
+  if (process.env.ZENCOMMIT_MOCK_RESPONSE) {
+    if (getVerbosity() >= 2) {
+      logVerbose(2, 'llm: using mock response');
+    }
+    const mocked = JSON.parse(process.env.ZENCOMMIT_MOCK_RESPONSE) as CommitMessage;
+    return {
+      subject: normalizeOutput(mocked.subject ?? ''),
+      body: normalizeOutput(mocked.body ?? ''),
+    };
+  }
+
+  const callModel = deps.callModel ?? callModelOnce;
+  let result = await callModel(input);
+
+  if (result.subject.length > input.maxSubjectChars) {
+    result = await callModel({
+      ...input,
+      user: `${input.user}\nKeep subject <= ${input.maxSubjectChars} chars.`,
+    });
+  }
+
+  if (result.subject.length > input.maxSubjectChars) {
+    const trimmed = result.subject.slice(0, Math.max(0, input.maxSubjectChars - 3));
+    result.subject = `${trimmed}...`;
+  }
+
+  result.subject = normalizeOutput(result.subject);
+  result.body = normalizeOutput(result.body ?? '');
+
+  return result;
+};

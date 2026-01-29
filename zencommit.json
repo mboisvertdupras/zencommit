@@ -1,0 +1,42 @@
+{
+  "ai": {
+    "model": "google/gemini-3-flash-preview",
+    "temperature": 0.2,
+    "maxOutputTokens": 4096,
+    "timeoutMs": 20000
+  },
+  "commit": {
+    "style": "conventional",
+    "language": "en",
+    "includeBody": true,
+    "emoji": false
+  },
+  "git": {
+    "diffMode": "staged",
+    "autoStage": false,
+    "confirmBeforeCommit": true
+  },
+  "diff": {
+    "truncateStrategy": "smart",
+    "includeFileList": true,
+    "excludeGitignoreFiles": true,
+    "maxFiles": 200,
+    "smart": {
+      "maxAddedLinesPerHunk": 12,
+      "maxRemovedLinesPerHunk": 12
+    }
+  },
+  "metadata": {
+    "provider": "auto",
+    "fallbackOrder": ["modelsdev", "local"],
+    "providers": {
+      "modelsdev": {
+        "url": "https://models.dev/api.json",
+        "cacheTtlHours": 24
+      },
+      "local": {
+        "path": "./models.metadata.json"
+      }
+    }
+  }
+}
