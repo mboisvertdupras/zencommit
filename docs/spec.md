@@ -49,9 +49,10 @@
 
 - `--yes` (boolean): skip confirmation and commit immediately.
 - `--dry-run` (boolean): do not call `git commit`; print output.
-- `--all` (boolean): stage all (`git add -A`) before generating message.
+- `--all` / `-a` (boolean): stage all (`git add -A`) before generating message.
 - `--unstaged` (boolean): use unstaged diff; never commits unless `--commit` is explicitly provided.
 - `--commit` (boolean): allow committing even with `--unstaged`.
+- `--push` / `-p` (boolean): push after committing.
 - `--model <id>`: override model id for this run.
 - `--format <conventional|freeform>`: override commit style.
 - `--lang <code>`: override language.

@@ -69,6 +69,9 @@ zencommit --dry-run
 # Stage all changes and generate message
 zencommit --all
 
+# Stage all changes (short flag)
+zencommit -a
+
 # Generate message for unstaged changes (preview only)
 zencommit --unstaged
 ```
@@ -79,9 +82,10 @@ zencommit --unstaged
 | ------------------ | --------------------------------------------------- |
 | `--yes`            | Skip confirmation and commit immediately            |
 | `--dry-run`        | Preview output without committing                   |
-| `--all`            | Stage all changes (`git add -A`) before generating  |
+| `--all`, `-a`      | Stage all changes (`git add -A`) before generating  |
 | `--unstaged`       | Use unstaged diff (never commits unless `--commit`) |
 | `--commit`         | Allow committing with `--unstaged`                  |
+| `--push`, `-p`     | Push after committing                               |
 | `--model <id>`     | Override model (e.g., `openai/gpt-4o`)              |
 | `--format <style>` | Commit style: `conventional` or `freeform`          |
 | `--lang <code>`    | Language code (e.g., `en`, `fr`, `es`)              |
@@ -103,6 +107,9 @@ zencommit --format freeform --no-body
 
 # Pass args to git commit
 zencommit --yes -- --no-verify
+
+# Stage, commit, and push in one go
+zencommit -ap --yes
 
 # Verbose output for debugging
 zencommit -vv --dry-run

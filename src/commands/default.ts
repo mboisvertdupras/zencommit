@@ -4,7 +4,7 @@ import type { CommitStyle, DiffMode, ResolvedConfig } from '../config/types.js';
 import { createMetadataResolver } from '../metadata/index.js';
 import { getRepoRoot } from '../git/repo.js';
 import { getDiff, getFileList, getFileSummary } from '../git/diff.js';
-import { commitMessage } from '../git/commit.js';
+import { commitMessage, pushChanges } from '../git/commit.js';
 import { buildPrompt, buildPromptWithoutDiff } from '../llm/prompt.js';
 import {
   computeTokenBudget,
@@ -29,6 +29,7 @@ export interface DefaultCommandArgs {
   all?: boolean;
   unstaged?: boolean;
   commit?: boolean;
+  push?: boolean;
   model?: string;
   format?: CommitStyle;
   lang?: string;
@@ -310,6 +311,10 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
     }
 
     await commitMessage(message.subject, message.body, extraArgs, repoRoot);
+    if (args.push) {
+      logVerbose(1, 'pushing commit to remote');
+      await pushChanges(repoRoot);
+    }
   } catch (error) {
     if (error instanceof ExecError) {
       console.error(error.stderr || error.message);

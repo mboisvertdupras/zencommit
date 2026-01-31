@@ -18,6 +18,7 @@ type DefaultArgs = {
   all: boolean;
   unstaged: boolean;
   commit: boolean;
+  push: boolean;
   model?: string;
   format?: 'conventional' | 'freeform';
   lang?: string;
@@ -42,7 +43,7 @@ type ModelsInfoArgs = {
 
 const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
   .scriptName('zencommit')
-  .parserConfiguration({ 'populate--': true })
+  .parserConfiguration({ 'populate--': true, 'short-option-groups': true })
   .option('verbose', {
     alias: 'v',
     count: true,
@@ -71,6 +72,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         .option('all', {
           type: 'boolean',
           default: false,
+          alias: 'a',
           describe: 'Stage all changes before generating',
         })
         .option('unstaged', { type: 'boolean', default: false, describe: 'Use unstaged diff' })
@@ -78,6 +80,12 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           type: 'boolean',
           default: false,
           describe: 'Allow committing with --unstaged',
+        })
+        .option('push', {
+          type: 'boolean',
+          default: false,
+          alias: 'p',
+          describe: 'Push after committing',
         })
         .option('model', { type: 'string', describe: 'Override model id' })
         .option('format', {
@@ -94,6 +102,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         all: argv.all,
         unstaged: argv.unstaged,
         commit: argv.commit,
+        push: argv.push,
         model: argv.model,
         format: argv.format,
         lang: argv.lang,

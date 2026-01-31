@@ -15,3 +15,7 @@ export const commitMessage = async (
   }
   await exec(args, { cwd });
 };
+
+export const pushChanges = async (cwd?: string): Promise<void> => {
+  await exec(['git', 'push'], { cwd });
+};
