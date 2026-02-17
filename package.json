@@ -18,7 +18,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "build:exe": "bun build --compile src/index.ts --outfile dist/zencommit",
+    "clean": "node scripts/clean-dist.mjs",
+    "build:ts": "tsc -p tsconfig.build.json",
+    "build:assets": "node scripts/copy-runtime-assets.mjs",
+    "build:verify": "node scripts/verify-dist.mjs",
+    "build": "npm run clean && npm run build:ts && npm run build:assets && npm run build:verify",
+    "prepack": "npm run build",
     "postinstall": "node scripts/install.mjs"
   },
   "engines": {

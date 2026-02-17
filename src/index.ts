@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -6,10 +6,6 @@
 import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import type { Argv } from 'yargs';
-import { runDefaultCommand } from './commands/default.js';
-import { runAuthLogin, runAuthLogout, runAuthStatus } from './commands/auth.js';
-import { runConfigInit, runConfigPrint, runConfigValidate } from './commands/config.js';
-import { runModelsInfo, runModelsSearch } from './commands/models.js';
 import { setVerbosity } from './util/logger.js';
 
 type DefaultArgs = {
@@ -96,6 +92,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         .option('lang', { type: 'string', describe: 'Commit language' })
         .option('no-body', { type: 'boolean', default: false, describe: 'Subject only' }),
     async (argv: DefaultArgs) => {
+      const { runDefaultCommand } = await import('./commands/default.js');
       await runDefaultCommand({
         yes: argv.yes,
         dryRun: argv['dry-run'],
@@ -125,6 +122,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
               .option('env-key', { type: 'string', describe: 'Environment key name' })
               .option('token', { type: 'string', describe: 'Secret token value' }),
           async (argv: AuthArgs) => {
+            const { runAuthLogin } = await import('./commands/auth.js');
             await runAuthLogin({ envKey: argv['env-key'], token: argv.token });
           },
         )
@@ -133,6 +131,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           'Remove an API key from Bun secrets',
           (sub) => sub.option('env-key', { type: 'string', describe: 'Environment key name' }),
           async (argv: AuthArgs) => {
+            const { runAuthLogout } = await import('./commands/auth.js');
             await runAuthLogout({ envKey: argv['env-key'] });
           },
         )
@@ -141,6 +140,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           'Show stored credentials',
           () => {},
           async () => {
+            const { runAuthStatus } = await import('./commands/auth.js');
             await runAuthStatus();
           },
         )
@@ -157,6 +157,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           'Print resolved config',
           () => {},
           async () => {
+            const { runConfigPrint } = await import('./commands/config.js');
             await runConfigPrint();
           },
         )
@@ -165,6 +166,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           'Write a starter config file',
           () => {},
           async () => {
+            const { runConfigInit } = await import('./commands/config.js');
             await runConfigInit();
           },
         )
@@ -173,6 +175,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           'Validate resolved config',
           () => {},
           async () => {
+            const { runConfigValidate } = await import('./commands/config.js');
             await runConfigValidate();
           },
         )
@@ -188,14 +191,13 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           'search [query]',
           'Search models',
           (sub) =>
-            sub
-              .positional('query', { type: 'string' })
-              .option('max-items', {
-                type: 'number',
-                default: 10,
-                describe: 'Max items to display in autocomplete',
-              }),
+            sub.positional('query', { type: 'string' }).option('max-items', {
+              type: 'number',
+              default: 10,
+              describe: 'Max items to display in autocomplete',
+            }),
           async (argv: ModelsSearchArgs) => {
+            const { runModelsSearch } = await import('./commands/models.js');
             await runModelsSearch(argv.query, argv.maxItems ?? 10);
           },
         )
@@ -204,6 +206,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           'Show model info',
           (sub) => sub.positional('modelId', { type: 'string', demandOption: true }),
           async (argv: ModelsInfoArgs) => {
+            const { runModelsInfo } = await import('./commands/models.js');
             await runModelsInfo(argv.modelId);
           },
         )
