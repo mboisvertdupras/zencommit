@@ -55,6 +55,21 @@ Verifier handoffs for this migration must include all required quality keys in t
 - `quality.mutation`
 - `quality.complexity`
 
+Canonical payload shape:
+
+```json
+{
+  "quality": {
+    "tests": "pass",
+    "coverage": "pass",
+    "lint": "pass",
+    "audit": "pass",
+    "mutation": "not_configured",
+    "complexity": "not_configured"
+  }
+}
+```
+
 Allowed status values: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
 
 ## Release Readiness Outcome
