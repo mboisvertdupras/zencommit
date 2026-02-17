@@ -1,0 +1,36 @@
+{
+  "help": {
+    "title": "Generate commit message",
+    "commands": ["zencommit auth", "zencommit config", "zencommit models"],
+    "options": [
+      "--yes",
+      "--dry-run",
+      "--all",
+      "--unstaged",
+      "--commit",
+      "--push",
+      "--model",
+      "--format",
+      "--lang",
+      "--no-body",
+      "--verbose"
+    ]
+  },
+  "dryRun": {
+    "mockResponse": {
+      "subject": "feat: test commit",
+      "body": "Body"
+    },
+    "stdout": "\nfeat: test commit\n\nBody\n\n"
+  },
+  "exitCodes": {
+    "configError": 2,
+    "noDiff": 3,
+    "modelError": 4
+  },
+  "stderrIncludes": {
+    "configError": "Invalid JSON in ZENCOMMIT_CONFIG_CONTENT:",
+    "noDiff": "No diff to summarize.",
+    "modelError": "Unsupported model provider: unsupported-provider"
+  }
+}
