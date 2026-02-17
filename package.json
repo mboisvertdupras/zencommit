@@ -19,6 +19,7 @@
     "guard:no-bun-runtime": "node scripts/guard-no-bun-runtime.mjs",
     "pretest": "npm run build",
     "test": "vitest run",
+    "smoke:install-matrix": "node scripts/smoke-install-matrix.mjs",
     "clean": "node scripts/clean-dist.mjs",
     "build:ts": "tsc -p tsconfig.build.json",
     "build:assets": "node scripts/copy-runtime-assets.mjs",

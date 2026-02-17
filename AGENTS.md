@@ -18,6 +18,7 @@
 - `npm test` — run Vitest suite (pretest builds `dist/`).
 - `npm run build` — clean, compile TS, copy runtime assets, and verify `dist/`.
 - `npm run guard:no-bun-runtime` — assert no Bun runtime APIs/types re-enter active source paths.
+- `npm run smoke:install-matrix` — validate packed-artifact execution for global, `npx`, and local dependency modes.
 - `node dist/index.js --help` — run the compiled CLI directly.
 
 ## Coding Style & Naming Conventions

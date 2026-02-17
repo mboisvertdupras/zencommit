@@ -28,7 +28,7 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
-      - run: npm pack
+      - run: npm run smoke:install-matrix
       - uses: actions/upload-artifact@v4
         with:
           name: npm-package
