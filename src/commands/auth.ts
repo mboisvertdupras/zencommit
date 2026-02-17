@@ -5,6 +5,7 @@ import {
   deleteSecret,
   getKnownEnvKeys,
   getSecret,
+  isSecretStoreUnavailableError,
   resolveProviderAuth,
   setSecret,
 } from '../auth/secrets.js';
@@ -81,7 +82,16 @@ export const runAuthLogin = async (args: AuthArgs): Promise<void> => {
   }
   logVerbose(2, `auth login: storing secret for ${envKey}`);
 
-  await setSecret(envKey, token);
+  try {
+    await setSecret(envKey, token);
+  } catch (error) {
+    if (isSecretStoreUnavailableError(error)) {
+      console.error(error.message);
+      console.error(`Set ${envKey} in your environment and retry.`);
+      process.exit(2);
+    }
+    throw error;
+  }
   process.env[envKey] = token;
 
   try {
@@ -103,7 +113,7 @@ export const runAuthLogin = async (args: AuthArgs): Promise<void> => {
     }
   }
 
-  console.log(`Stored ${envKey} in Bun secrets.`);
+  console.log(`Stored ${envKey} in secure store.`);
 };
 
 export const runAuthLogout = async (args: AuthArgs): Promise<void> => {
@@ -118,8 +128,17 @@ export const runAuthLogout = async (args: AuthArgs): Promise<void> => {
     console.error((error as Error).message);
     process.exit(2);
   }
-  await deleteSecret(envKey);
-  console.log(`Removed ${envKey} from Bun secrets.`);
+  try {
+    await deleteSecret(envKey);
+  } catch (error) {
+    if (isSecretStoreUnavailableError(error)) {
+      console.error(error.message);
+      console.error(`Unset ${envKey} in your environment if it was exported there.`);
+      process.exit(2);
+    }
+    throw error;
+  }
+  console.log(`Removed ${envKey} from secure store.`);
 };
 
 export const runAuthStatus = async (): Promise<void> => {

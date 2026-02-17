@@ -116,7 +116,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
       yargsBuilder
         .command(
           'login',
-          'Store an API key in Bun secrets',
+          'Store an API key in secure store',
           (sub) =>
             sub
               .option('env-key', { type: 'string', describe: 'Environment key name' })
@@ -128,7 +128,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         )
         .command(
           'logout',
-          'Remove an API key from Bun secrets',
+          'Remove an API key from secure store',
           (sub) => sub.option('env-key', { type: 'string', describe: 'Environment key name' }),
           async (argv: AuthArgs) => {
             const { runAuthLogout } = await import('./commands/auth.js');

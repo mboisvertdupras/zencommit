@@ -1,3 +1,5 @@
+import { ExecError, exec } from '../util/exec.js';
+
 export interface ProviderAuthConfig {
   id: string;
   name: string;
@@ -153,27 +155,164 @@ const ENV_KEY_ALIASES: Record<string, string[]> = {
 
 const SECRET_SERVICE = 'zencommit';
 
+export interface SecretStore {
+  set(envKey: string, value: string): Promise<void>;
+  get(envKey: string): Promise<string | null>;
+  delete(envKey: string): Promise<void>;
+}
+
+export class SecretStoreUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SecretStoreUnavailableError';
+  }
+}
+
+const buildUnavailableMessage = (): string => {
+  if (process.platform === 'darwin') {
+    return 'Secure store unavailable: macOS Keychain access failed. Use environment variables for credentials.';
+  }
+  return `Secure store unavailable on platform ${process.platform}. Use environment variables for credentials.`;
+};
+
+const isMissingSecretMessage = (text: string): boolean => {
+  const normalized = text.toLowerCase();
+  return (
+    normalized.includes('could not be found') ||
+    normalized.includes('item not found') ||
+    normalized.includes('secitemnotfound')
+  );
+};
+
+const toUnavailableError = (error: unknown): SecretStoreUnavailableError | null => {
+  if (error instanceof SecretStoreUnavailableError) {
+    return error;
+  }
+  if (process.platform !== 'darwin') {
+    return new SecretStoreUnavailableError(buildUnavailableMessage());
+  }
+  if (error instanceof ExecError) {
+    const details = `${error.stderr}\n${error.message}`.toLowerCase();
+    if (details.includes('enoent') || details.includes('not found')) {
+      return new SecretStoreUnavailableError(buildUnavailableMessage());
+    }
+  }
+  return null;
+};
+
+class MacOsKeychainSecretStore implements SecretStore {
+  constructor(private readonly service: string) {}
+
+  private assertSupportedPlatform(): void {
+    if (process.platform !== 'darwin') {
+      throw new SecretStoreUnavailableError(buildUnavailableMessage());
+    }
+  }
+
+  async set(envKey: string, value: string): Promise<void> {
+    this.assertSupportedPlatform();
+    await exec([
+      'security',
+      'add-generic-password',
+      '-U',
+      '-s',
+      this.service,
+      '-a',
+      envKey,
+      '-w',
+      value,
+    ]);
+  }
+
+  async get(envKey: string): Promise<string | null> {
+    this.assertSupportedPlatform();
+
+    const result = await exec(
+      ['security', 'find-generic-password', '-s', this.service, '-a', envKey, '-w'],
+      { allowFailure: true },
+    );
+
+    if (result.exitCode !== 0) {
+      if (isMissingSecretMessage(result.stderr)) {
+        return null;
+      }
+      throw new Error(
+        `Failed to read ${envKey} from secure store: ${result.stderr.trim() || `exit ${result.exitCode}`}`,
+      );
+    }
+
+    const value = result.stdout.replace(/[\r\n]+$/g, '');
+    return value.length > 0 ? value : null;
+  }
+
+  async delete(envKey: string): Promise<void> {
+    this.assertSupportedPlatform();
+
+    const result = await exec(
+      ['security', 'delete-generic-password', '-s', this.service, '-a', envKey],
+      { allowFailure: true },
+    );
+
+    if (result.exitCode !== 0 && !isMissingSecretMessage(result.stderr)) {
+      throw new Error(
+        `Failed to remove ${envKey} from secure store: ${result.stderr.trim() || `exit ${result.exitCode}`}`,
+      );
+    }
+  }
+}
+
+const createDefaultSecretStore = (): SecretStore => new MacOsKeychainSecretStore(SECRET_SERVICE);
+
+let secretStore: SecretStore = createDefaultSecretStore();
+
+export const setSecretStoreForTesting = (store: SecretStore): void => {
+  secretStore = store;
+};
+
+export const resetSecretStoreForTesting = (): void => {
+  secretStore = createDefaultSecretStore();
+};
+
+export const isSecretStoreUnavailableError = (
+  error: unknown,
+): error is SecretStoreUnavailableError => error instanceof SecretStoreUnavailableError;
+
 export const getSecretLabel = (envKey: string): string => `${SECRET_SERVICE}:${envKey}`;
 
-const toSecretOptions = (envKey: string): { service: string; name: string } => ({
-  service: SECRET_SERVICE,
-  name: envKey,
-});
-
 export const setSecret = async (envKey: string, value: string): Promise<void> => {
-  await Bun.secrets.set(toSecretOptions(envKey), value);
+  try {
+    await secretStore.set(envKey, value);
+  } catch (error) {
+    const unavailable = toUnavailableError(error);
+    if (unavailable) {
+      throw unavailable;
+    }
+    throw error;
+  }
 };
 
 export const getSecret = async (envKey: string): Promise<string | null> => {
-  const value = await Bun.secrets.get(toSecretOptions(envKey));
-  if (!value) {
-    return null;
+  try {
+    return await secretStore.get(envKey);
+  } catch (error) {
+    const unavailable = toUnavailableError(error);
+    if (unavailable) {
+      return null;
+    }
+    throw error;
   }
-  return value;
 };
 
 export const deleteSecret = async (envKey: string): Promise<void> => {
-  await Bun.secrets.delete(toSecretOptions(envKey));
+  try {
+    await secretStore.delete(envKey);
+  } catch (error) {
+    const unavailable = toUnavailableError(error);
+    if (unavailable) {
+      throw unavailable;
+    }
+    throw error;
+  }
 };
 
 const PROVIDER_AUTH_INDEX: Map<string, ProviderAuthConfig> = new Map(
