@@ -20,7 +20,6 @@ export default [
       globals: {
         ...globals.es2022,
         ...globals.node,
-        Bun: 'readonly',
       },
     },
   },

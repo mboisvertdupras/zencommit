@@ -89,9 +89,9 @@ describe('parity baseline fixtures', () => {
     const fixture = await loadBaselineFixture();
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const workspaceRoot = path.join(__dirname, '..', '..');
-    const entry = path.join(workspaceRoot, 'index.ts');
+    const entry = path.join(workspaceRoot, 'dist', 'index.js');
 
-    const result = await runCli(['bun', entry, '--help'], workspaceRoot, {});
+    const result = await runCli([process.execPath, entry, '--help'], workspaceRoot, {});
 
     expect(result.code).toBe(0);
     const lines = toNormalizedLines(result.stdout);
@@ -111,10 +111,10 @@ describe('parity baseline fixtures', () => {
     const fixture = await loadBaselineFixture();
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const workspaceRoot = path.join(__dirname, '..', '..');
-    const entry = path.join(workspaceRoot, 'index.ts');
+    const entry = path.join(workspaceRoot, 'dist', 'index.js');
     const repo = await createTempRepo(true);
 
-    const result = await runCli(['bun', entry, '--dry-run', '--yes'], repo, {
+    const result = await runCli([process.execPath, entry, '--dry-run', '--yes'], repo, {
       ZENCOMMIT_MOCK_RESPONSE: JSON.stringify(fixture.dryRun.mockResponse),
     });
 
@@ -127,16 +127,20 @@ describe('parity baseline fixtures', () => {
     const fixture = await loadBaselineFixture();
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const workspaceRoot = path.join(__dirname, '..', '..');
-    const entry = path.join(workspaceRoot, 'index.ts');
+    const entry = path.join(workspaceRoot, 'dist', 'index.js');
 
-    const configResult = await runCli(['bun', entry, 'config', 'validate'], workspaceRoot, {
-      ZENCOMMIT_CONFIG_CONTENT: '{',
-    });
+    const configResult = await runCli(
+      [process.execPath, entry, 'config', 'validate'],
+      workspaceRoot,
+      {
+        ZENCOMMIT_CONFIG_CONTENT: '{',
+      },
+    );
     expect(configResult.code).toBe(fixture.exitCodes.configError);
     expect(configResult.stderr).toContain(fixture.stderrIncludes.configError);
 
     const noDiffRepo = await createTempRepo(false);
-    const noDiffResult = await runCli(['bun', entry, '--dry-run', '--yes'], noDiffRepo, {
+    const noDiffResult = await runCli([process.execPath, entry, '--dry-run', '--yes'], noDiffRepo, {
       ZENCOMMIT_MOCK_RESPONSE: JSON.stringify(fixture.dryRun.mockResponse),
     });
     expect(noDiffResult.code).toBe(fixture.exitCodes.noDiff);
@@ -156,7 +160,7 @@ describe('parity baseline fixtures', () => {
     });
 
     const modelErrorResult = await runCli(
-      ['bun', entry, '--dry-run', '--yes', '--model', 'unsupported-provider/mock-model'],
+      [process.execPath, entry, '--dry-run', '--yes', '--model', 'unsupported-provider/mock-model'],
       modelErrorRepo,
       {
         ZENCOMMIT_CONFIG_CONTENT: modelErrorConfig,

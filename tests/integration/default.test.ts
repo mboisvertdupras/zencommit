@@ -28,14 +28,14 @@ const run = (args: string[], cwd: string, env: Record<string, string>) =>
 describe('zencommit default command', () => {
   it('runs with dry-run and mock output', async () => {
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const entry = path.join(__dirname, '..', '..', 'index.ts');
+    const entry = path.join(__dirname, '..', '..', 'dist', 'index.js');
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'zencommit-int-'));
     execFileSync('git', ['init'], { cwd: dir });
     await fs.writeFile(path.join(dir, 'file.txt'), 'hello\n', 'utf8');
     execFileSync('git', ['add', '-A'], { cwd: dir });
 
     const mock = JSON.stringify({ subject: 'feat: test commit', body: 'Body' });
-    const result = await run(['bun', entry, '--dry-run', '--yes'], dir, {
+    const result = await run([process.execPath, entry, '--dry-run', '--yes'], dir, {
       ZENCOMMIT_MOCK_RESPONSE: mock,
     });
 

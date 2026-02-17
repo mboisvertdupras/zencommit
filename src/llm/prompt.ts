@@ -39,19 +39,6 @@ const loadTemplate = async (name: string): Promise<string> => {
   return text;
 };
 
-const renderMarkdown = (value: string): void => {
-  const renderer = (Bun as unknown as { markdown?: { render?: (input: string) => string } })
-    .markdown?.render;
-  if (typeof renderer !== 'function') {
-    return;
-  }
-  try {
-    renderer(value);
-  } catch {
-    // Ignore markdown parser errors and keep raw markdown.
-  }
-};
-
 const buildUserPrompt = async (input: PromptInput, includeDiff: boolean): Promise<string> => {
   const baseTemplate = await loadTemplate('base');
   const conventionalTemplate = await loadTemplate('conventional');
@@ -78,9 +65,7 @@ const buildUserPrompt = async (input: PromptInput, includeDiff: boolean): Promis
     gitmojiGuidelines: input.emoji ? gitmojiTemplate.trim() : '',
   });
 
-  const normalized = normalizePrompt(markdown);
-  renderMarkdown(normalized);
-  return normalized;
+  return normalizePrompt(markdown);
 };
 
 export const buildPrompt = async (input: PromptInput): Promise<PromptOutput> => ({

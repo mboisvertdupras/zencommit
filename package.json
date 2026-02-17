@@ -17,6 +17,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "guard:no-bun-runtime": "node scripts/guard-no-bun-runtime.mjs",
+    "pretest": "npm run build",
     "test": "vitest run",
     "clean": "node scripts/clean-dist.mjs",
     "build:ts": "tsc -p tsconfig.build.json",
@@ -65,7 +67,6 @@
     "yocto-spinner": "^1.0.0"
   },
   "devDependencies": {
-    "@types/bun": "latest",
     "@types/node": "^25.1.0",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
