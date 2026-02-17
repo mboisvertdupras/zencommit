@@ -44,6 +44,19 @@ All required release-readiness gates were rerun on Node/npm and passed.
 - `npm pack --json` includes `bin/zencommit.js` and compiled runtime in `dist/`.
 - Prompt/template runtime assets are present in package payload under `dist/llm/prompts/*.md`.
 
+## Verifier Quality Payload Contract
+
+Verifier handoffs for this migration must include all required quality keys in the `verify.passed` payload.
+
+- `quality.tests`
+- `quality.coverage`
+- `quality.lint`
+- `quality.audit`
+- `quality.mutation`
+- `quality.complexity`
+
+Allowed status values: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
+
 ## Release Readiness Outcome
 
 Release candidate is certified for npm-native publish with Node LTS runtime parity requirements satisfied.
