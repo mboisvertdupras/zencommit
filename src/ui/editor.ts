@@ -1,6 +1,22 @@
+import { spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+const runEditor = (command: string, args: string[]): Promise<number> =>
+  new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      stdio: 'inherit',
+    });
+
+    proc.on('error', () => {
+      resolve(1);
+    });
+
+    proc.on('close', (code) => {
+      resolve(code ?? 1);
+    });
+  });
 
 export const openEditor = async (initialText: string): Promise<string> => {
   const editor = process.env.EDITOR;
@@ -17,13 +33,7 @@ export const openEditor = async (initialText: string): Promise<string> => {
     return initialText;
   }
 
-  const proc = Bun.spawn([command, ...args, filePath], {
-    stdin: 'inherit',
-    stdout: 'inherit',
-    stderr: 'inherit',
-  });
-
-  const exitCode = await proc.exited;
+  const exitCode = await runEditor(command, [...args, filePath]);
   if (exitCode !== 0) {
     return initialText;
   }
