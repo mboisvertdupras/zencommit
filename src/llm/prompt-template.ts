@@ -40,5 +40,4 @@ export const renderTemplate = (template: string, context: TemplateContext): stri
   return result;
 };
 
-export const normalizePrompt = (value: string): string =>
-  value.replace(/\r\n/g, '\n').trim();
+export const normalizePrompt = (value: string): string => value.replace(/\r\n/g, '\n').trim();

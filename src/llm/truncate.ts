@@ -123,7 +123,11 @@ const tokensForLines = (lines: string[], encoding: TokenEncoder): number => {
   return countTokens(`${lines.join('\n')}\n`, encoding);
 };
 
-const truncateLinesToBudget = (lines: string[], budget: number, encoding: TokenEncoder): string[] => {
+const truncateLinesToBudget = (
+  lines: string[],
+  budget: number,
+  encoding: TokenEncoder,
+): string[] => {
   const output: string[] = [];
   let used = 0;
   for (const line of lines) {

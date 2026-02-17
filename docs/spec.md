@@ -1,6 +1,6 @@
 # Build Spec — `zencommit` (AI Commit Message CLI)
 
-**Purpose:** This document is the _implementation spec_ for an AI agent to build a Bun + TypeScript CLI that generates git commit messages using an LLM.
+**Purpose:** This document is the _implementation spec_ for an AI agent to build a Node.js + TypeScript CLI that generates git commit messages using an LLM.
 
 **Working identifiers (use these consistently in code):**
 
@@ -26,8 +26,8 @@
 3. **Use a pluggable metadata provider** for model specs/limits/pricing/features. Default provider: **models.dev** (metadata only; not a model provider).
 4. **Diff size MUST be auto-capped** based on the selected model’s token limits from the active metadata provider (models.dev by default).
 5. **Config MUST be standard JSON** and merged (not replaced) across sources.
-6. **Provide **``** UX** and store secrets **ONLY** via **Bun’s Secrets API** (never in config).
-7. **Bun + TypeScript** with minimal deps. Allowed deps (MVP):
+6. **Provide **``** UX** and store secrets **ONLY** via a **secure-store adapter** (never in config).
+7. **Node.js + TypeScript** with minimal deps. Allowed deps (MVP):
    - `ai` (Vercel AI SDK)
    - `yargs`
    - `@clack/prompts`
@@ -71,7 +71,7 @@
 
 #### `zencommit auth login`
 
-Secrets are stored **ONLY** via **Bun’s Secrets API** and MUST **never** be written to any config file.
+Secrets are stored **ONLY** via the secure-store adapter and MUST **never** be written to any config file.
 
 Config may store only non-sensitive metadata (e.g., preferred key name and scope/label selection).
 
@@ -82,13 +82,13 @@ Flow:
    - Anthropic → `ANTHROPIC_API_KEY`
    - Google Gemini → `GOOGLE_GENERATIVE_AI_API_KEY` (also accept `GEMINI_API_KEY` at runtime)
 2. Prompt for the secret value (masked input).
-3. Store the secret in `Bun.secrets` under the deterministic label: `zencommit:<ENV_KEY>`.
+3. Store the secret in the secure store under the deterministic label: `zencommit:<ENV_KEY>`.
 4. (Optional) Write non-sensitive metadata to config (merge-preserving), e.g. `auth.preferredEnvKey`.
 5. Verify (best-effort): run a tiny model call with a 5s timeout and report success/failure.
 
 **Fallback credential resolution (used at runtime and by **``**):**
 
-1. If a secret exists in `Bun.secrets` for the selected label, use it.
+1. If a secret exists in the secure store for the selected label, use it.
 2. Else, If `process.env[ENV_KEY]` is set, use it.
 3. Else, scan `process.env` for common provider keys (e.g., `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GEMINI_API_KEY`, etc.).
 
@@ -99,7 +99,7 @@ Non-interactive:
 #### `zencommit auth logout`
 
 - `zencommit auth logout --env-key OPENAI_API_KEY`
-- Deletes the secret from `Bun.secrets` for label `zencommit:<ENV_KEY>` (does not touch config).
+- Deletes the secret from the secure store for label `zencommit:<ENV_KEY>` (does not touch config).
 
 #### `zencommit auth status`
 
@@ -109,7 +109,7 @@ Non-interactive:
 
 - Never print full secrets.
 - Never write secrets to config files.
-- When printing status, show only whether a secret exists for a key (and optionally the last 4 chars if Bun Secrets API supports safe retrieval for display—otherwise omit).
+- When printing status, show only whether a secret exists for a key (and optionally the last 4 chars if the secure-store backend supports safe retrieval for display—otherwise omit).
 
 ### 2.3 `zencommit config`
 
@@ -483,7 +483,7 @@ Use provider API keys with the Vercel AI SDK.
 
 Before calling the AI SDK, ensure the required provider key is present:
 
-1. Attempt to load `KEY` from `Bun.secrets` label `zencommit:<KEY>` and set it in-memory.
+1. Attempt to load `KEY` from the secure-store label `zencommit:<KEY>` and set it in-memory.
 2. Else, scan for equivalent keys in `process.env` (e.g., for Gemini accept `GEMINI_API_KEY` as equivalent to `GOOGLE_GENERATIVE_AI_API_KEY`).
 
 If no credential is available, fail with exit code `2` and an actionable message suggesting `zencommit auth login`.
@@ -509,7 +509,7 @@ If no credential is available, fail with exit code `2` and an actionable message
       types.ts
       validate.ts
     auth/
-      secrets.ts          # read/write secrets using Bun.secrets (no config persistence)
+      secrets.ts          # read/write secrets via secure-store adapter (no config persistence)
     metadata/
       index.ts             # provider registry + resolver (auto/fallback)
       types.ts
@@ -537,7 +537,7 @@ If no credential is available, fail with exit code `2` and an actionable message
 
 Implementation notes:
 
-- Prefer Bun’s `Bun.$` or `child_process` wrappers via Bun API for running git.
+- Prefer Node `child_process` wrappers for running git.
 - Keep modules small and pure (easy for tests).
 
 ---
@@ -568,14 +568,14 @@ LLM module must be injectable:
 
 ## 11) Build order checklist (for the AI agent)
 
-1. Initialize Bun + TS project, set up `yargs` entry.
+1. Initialize Node.js + TS project, set up `yargs` entry.
 2. Implement config load + merge + validate.
 3. Implement metadata providers (models.dev default + local offline provider) + caching/resolution.
 4. Implement git repo discovery + diff collection.
 5. Implement prompt builder (without diff), token estimator, budget, truncation.
 6. Implement AI SDK call (structured output) and fallback parsing.
 7. Implement default command UX with clack (confirm/edit).
-8. Implement `auth` commands and secret persistence via Bun’s Secrets API.
+8. Implement `auth` commands and secret persistence via the secure-store adapter.
 9. Add tests (unit + integration), ensure no secrets leak.
 10. Ship `zencommit config init/print/validate` and `zencommit models` commands.
 
@@ -585,6 +585,6 @@ LLM module must be injectable:
 
 - `zencommit` generates a valid commit message and can commit.
 - Diff auto-capping works with different models using metadata-provider token limits (models.dev by default).
-- `auth login` stores keys only in Bun’s Secrets API (never in config).
+- `auth login` stores keys only in the secure store (never in config).
 - No provider adapters exist; AI SDK is the only model interface.
 - Config merging works exactly as specified.

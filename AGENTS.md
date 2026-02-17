@@ -2,40 +2,45 @@
 
 ## Project Structure & Module Organization
 
-- `index.ts` is the current Bun/TypeScript entrypoint (prototype).
-- `docs/spec.md` defines the CLI behavior and target module layout; treat it as the source of truth.
-- Tooling lives in `package.json`, `tsconfig.json`, `bun.lock`. `node_modules/` is local only.
-- As the codebase grows, follow the structure described in `docs/spec.md` (e.g., `src/commands/`, `src/config/`, `src/git/`, `src/llm/`).
+- `src/index.ts` is the TypeScript CLI entrypoint; compiled runtime artifacts are emitted to `dist/`.
+- `bin/zencommit.js` is the npm launcher that imports `dist/index.js`.
+- Migration scope and acceptance criteria live under `specs/nodejs-rewrite-npm-native-install/`.
+- `docs/spec.md` is a legacy implementation spec; prefer the rewrite specs above for active runtime/tooling decisions.
+- Tooling metadata lives in `package.json`, `package-lock.json`, and TypeScript configs (`tsconfig*.json`).
 
 ## Build, Test, and Development Commands
 
-- `bun install` — install dependencies.
-- `bun index.ts` — run the current prototype entrypoint.
-- `bun run lint` — run ESLint (TypeScript + Node/Bun globals).
-- `bun run lint:fix` — auto-fix lint issues where possible.
-- `bun run format` — format with Prettier.
-- `bun run format:check` — verify formatting in CI.
-- No build or test scripts are configured yet; add them in `package.json` when introducing a build step or tests.
+- `npm ci` — install dependencies from lockfile (CI/reproducible installs).
+- `npm run lint` — run ESLint.
+- `npm run lint:fix` — auto-fix lint issues where possible.
+- `npm run format` — format with Prettier.
+- `npm run format:check` — verify formatting.
+- `npm test` — run Vitest suite (pretest builds `dist/`).
+- `npm run build` — clean, compile TS, copy runtime assets, and verify `dist/`.
+- `npm run guard:no-bun-runtime` — assert no Bun runtime APIs/types re-enter active source paths.
+- `node dist/index.js --help` — run the compiled CLI directly.
 
 ## Coding Style & Naming Conventions
 
 - TypeScript + ESM only (`"type": "module"`). Prefer `import`/`export`; avoid CommonJS.
-- Keep code strict per `tsconfig.json` (e.g., `strict`, `noUncheckedIndexedAccess`).
-- Indentation: 2 spaces in JSON; use 2 spaces in TS for consistency.
+- Keep strict typing per `tsconfig.json` (`strict`, `noUncheckedIndexedAccess`, etc.).
 - Naming: `camelCase` for variables/functions, `PascalCase` for types/classes, `kebab-case` for file names.
 - Formatting/linting: Prettier (`.prettierrc.json`) and ESLint (`eslint.config.js`).
 
 ## Testing Guidelines
 
-- Tests are not set up yet.
-- The spec expects unit and integration tests (see `docs/spec.md`); when adding tests, include a clear runner command (e.g., `bun test`) and note the test locations.
+- Test runner: Vitest (`npm test`).
+- Unit tests live in `tests/unit/`; integration tests live in `tests/integration/`.
+- Keep parity-sensitive behavior covered (exit codes `0/2/3/4`, config precedence, auth fallback behavior, dry-run outputs).
 
 ## Commit & Pull Request Guidelines
 
-- The repo has no commit history yet; start with Conventional Commits (e.g., `feat: add config loader`, `fix: handle empty diff`).
-- Keep subjects ≤72 chars; include a body for breaking changes or complex behavior.
-- PRs should include: a short summary, how you tested (commands), and any CLI output examples that changed.
+- Use Conventional Commits (e.g., `feat: add config loader`, `fix: handle empty diff`).
+- Keep subjects ≤72 chars; include a body for breaking changes or non-trivial behavior.
+- PRs should include: summary, verification commands run, and updated CLI output examples when behavior-facing text changes.
 
 ## Security & Configuration Notes
 
-- Never commit API keys or secrets. The spec requires Bun’s Secrets API and non-sensitive config in `zencommit.json`.
+- Never commit API keys or other secrets.
+- Secrets must be stored via the runtime secure-store adapter (with env fallback), never in `zencommit.json`.
+- Keep `zencommit.json` limited to non-sensitive configuration.

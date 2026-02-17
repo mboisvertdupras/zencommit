@@ -10,20 +10,27 @@ AI-powered git commit message generator. Analyzes your staged changes and genera
 - **Conventional Commits** - Generates messages following conventional commit standards
 - **Interactive Workflow** - Preview, edit, or confirm before committing
 - **Flexible Configuration** - Global, project, and CLI-level configuration options
-- **Secure Credential Storage** - API keys stored securely via Bun's Secrets API
+- **Secure Credential Storage** - API keys stored in the system secure store (with env fallback)
 
 ## Installation
 
-### Using npm
+### Global Install
 
 ```bash
 npm install -g zencommit
 ```
 
-### Using Bun
+### One-Off via npx
 
 ```bash
-bun install -g zencommit
+npx zencommit --help
+```
+
+### Local Dependency
+
+```bash
+npm install --save-dev zencommit
+npx zencommit --help
 ```
 
 ### From Source
@@ -31,8 +38,9 @@ bun install -g zencommit
 ```bash
 git clone https://github.com/mboisvertdupras/zencommit.git
 cd zencommit
-bun install
-bun run build:exe
+npm install
+npm run build
+node dist/index.js --help
 ```
 
 ## Quick Start
@@ -117,7 +125,7 @@ zencommit -vv --dry-run
 
 ## Authentication
 
-Manage API keys with the `auth` command. Keys are stored securely via Bun's Secrets API and never written to config files.
+Manage API keys with the `auth` command. Keys are stored via the secure-store backend and never written to config files.
 
 ```bash
 # Interactive login
@@ -356,31 +364,31 @@ Distributes token budget proportionally across files, ensuring each file gets a 
 
 ### Prerequisites
 
-- [Bun](https://bun.sh/) >= 1.0
-- Node.js >= 18 (for npm compatibility)
+- Node.js >= 22
+- npm >= 10
 
 ### Commands
 
 ```bash
-# Install dependencies
-bun install
+# Install dependencies from lockfile
+npm ci
 
-# Run directly
-bun src/index.ts
+# Build distributable artifacts
+npm run build
+
+# Run compiled CLI
+node dist/index.js --help
 
 # Lint
-bun run lint
-bun run lint:fix
+npm run lint
+npm run lint:fix
 
 # Format
-bun run format
-bun run format:check
+npm run format
+npm run format:check
 
 # Run tests
-bun run test
-
-# Build standalone executable
-bun run build:exe
+npm test
 ```
 
 ### Project Structure
@@ -411,7 +419,7 @@ zencommit/
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/my-feature`
 3. Make your changes following the coding style
-4. Run linting and tests: `bun run lint && bun run test`
+4. Run linting and tests: `npm run lint && npm test`
 5. Commit using conventional commits: `feat: add my feature`
 6. Push and open a pull request
 
@@ -423,6 +431,6 @@ MIT
 
 - [Vercel AI SDK](https://sdk.vercel.ai/) for unified LLM access
 - [models.dev](https://models.dev) for model metadata
-- [Bun](https://bun.sh/) for fast JavaScript runtime
+- [Node.js](https://nodejs.org/) runtime + npm packaging
 - [yargs](https://yargs.js.org/) for CLI parsing
 - [@clack/prompts](https://github.com/bombshell-dev/clack) for beautiful prompts
