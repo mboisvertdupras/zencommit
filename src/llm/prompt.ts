@@ -1,8 +1,6 @@
+import { readFile } from 'node:fs/promises';
+
 import { normalizePrompt, renderTemplate } from './prompt-template.js';
-import baseTemplatePath from './prompts/base.md' with { type: 'file' };
-import conventionalTemplatePath from './prompts/conventional.md' with { type: 'file' };
-import gitmojiTemplatePath from './prompts/gitmoji.md' with { type: 'file' };
-import systemTemplatePath from './prompts/system.md' with { type: 'file' };
 
 export interface PromptInput {
   style: 'conventional' | 'freeform';
@@ -20,11 +18,11 @@ export interface PromptOutput {
 }
 
 const templateCache = new Map<string, string>();
-const templateFiles: Record<string, string> = {
-  base: baseTemplatePath,
-  conventional: conventionalTemplatePath,
-  gitmoji: gitmojiTemplatePath,
-  system: systemTemplatePath,
+const templateFiles: Record<string, URL> = {
+  base: new URL('./prompts/base.md', import.meta.url),
+  conventional: new URL('./prompts/conventional.md', import.meta.url),
+  gitmoji: new URL('./prompts/gitmoji.md', import.meta.url),
+  system: new URL('./prompts/system.md', import.meta.url),
 };
 
 const loadTemplate = async (name: string): Promise<string> => {
@@ -36,7 +34,7 @@ const loadTemplate = async (name: string): Promise<string> => {
   if (!templatePath) {
     throw new Error(`Unknown prompt template: ${name}`);
   }
-  const text = await Bun.file(templatePath).text();
+  const text = await readFile(templatePath, 'utf8');
   templateCache.set(name, text);
   return text;
 };
