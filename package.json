@@ -1,16 +1,15 @@
 {
   "name": "zencommit",
   "version": "0.1.5",
-  "module": "./src/index.ts",
+  "main": "./dist/index.js",
   "type": "module",
   "private": false,
   "bin": {
     "zencommit": "bin/zencommit.js"
   },
   "files": [
-    "src",
-    "bin",
-    "scripts"
+    "dist",
+    "bin"
   ],
   "scripts": {
     "lint": "eslint .",
@@ -25,11 +24,10 @@
     "build:assets": "node scripts/copy-runtime-assets.mjs",
     "build:verify": "node scripts/verify-dist.mjs",
     "build": "npm run clean && npm run build:ts && npm run build:assets && npm run build:verify",
-    "prepack": "npm run build",
-    "postinstall": "node scripts/install.mjs"
+    "prepack": "npm run build"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "publishConfig": {
     "access": "public",
