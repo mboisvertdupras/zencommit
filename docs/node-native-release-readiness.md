@@ -46,45 +46,85 @@ All required release-readiness gates were rerun on Node/npm and passed.
 
 ## Verifier Quality Payload Contract
 
-Verifier handoffs for this migration must include all required quality keys in the `verify.passed` payload.
+Verifier handoffs for this migration must use the parser-compatible plain-text payload format consumed by `ralph` (line-based `key: value` entries, not JSON objects).
 
-- `quality.tests`
-- `quality.coverage`
-- `quality.lint`
-- `quality.audit`
-- `quality.mutation`
-- `quality.complexity`
+Required quality dimensions (all six are mandatory in every `verify.passed` payload):
 
-Canonical payload shape (use fully-qualified quality keys expected by orchestration):
+- `quality.tests: <pass|fail>`
+- `quality.coverage: <number>%`
+- `quality.lint: <pass|fail>`
+- `quality.audit: <pass|fail>`
+- `quality.mutation: <number>%`
+- `quality.complexity: <number>`
 
-```json
-{
-  "quality.tests": "pass",
-  "quality.coverage": "pass",
-  "quality.lint": "pass",
-  "quality.audit": "pass",
-  "quality.mutation": "not_configured",
-  "quality.complexity": "not_configured"
-}
+Required threshold/evidence context (paired lines for each dimension):
+
+- `threshold.quality.tests: <threshold>`
+- `evidence.quality.tests: <status + emitted value>`
+- `threshold.quality.coverage: <threshold>`
+- `evidence.quality.coverage: <status + emitted value>`
+- `threshold.quality.lint: <threshold>`
+- `evidence.quality.lint: <status + emitted value>`
+- `threshold.quality.audit: <threshold>`
+- `evidence.quality.audit: <status + emitted value>`
+- `threshold.quality.mutation: <threshold>`
+- `evidence.quality.mutation: <status + emitted value>`
+- `threshold.quality.complexity: <threshold>`
+- `evidence.quality.complexity: <status + emitted value>`
+
+Canonical payload example (line-based parser contract):
+
+```text
+task_id: task-1771373673-d60c
+commit: 9e6ebd6
+summary: Verifier quality payload completeness restored for orchestration handoff.
+quality.tests: pass
+quality.coverage: 80%
+quality.lint: pass
+quality.audit: pass
+quality.mutation: 70%
+quality.complexity: 10
+threshold.quality.tests: pass
+evidence.quality.tests: input_status=pass; emitted=pass
+threshold.quality.coverage: >=80%
+evidence.quality.coverage: input_status=pass; emitted=80%
+threshold.quality.lint: pass
+evidence.quality.lint: input_status=pass; emitted=pass
+threshold.quality.audit: pass
+evidence.quality.audit: input_status=pass; emitted=pass
+threshold.quality.mutation: >=70%
+evidence.quality.mutation: input_status=pass; emitted=70%
+threshold.quality.complexity: <=10
+evidence.quality.complexity: input_status=pass; emitted=10
 ```
 
-Allowed status values: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
+Allowed helper input status values: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
 
 ## Verifier-Ready Evidence (task-1771373673-d60c)
 
-The following payload is the required `verify.passed` shape for this migration and includes every mandatory quality field.
+The following payload is the required `verify.passed` shape for this migration and includes every mandatory quality, threshold, and evidence line.
 
-```json
-{
-  "taskId": "task-1771373673-d60c",
-  "summary": "Verifier quality payload completeness restored for orchestration handoff.",
-  "quality.tests": "pass",
-  "quality.coverage": "pass",
-  "quality.lint": "pass",
-  "quality.audit": "pass",
-  "quality.mutation": "not_configured",
-  "quality.complexity": "not_configured"
-}
+```text
+task_id: task-1771373673-d60c
+summary: Verifier quality payload completeness restored for orchestration handoff.
+quality.tests: pass
+quality.coverage: 80%
+quality.lint: pass
+quality.audit: pass
+quality.mutation: 70%
+quality.complexity: 10
+threshold.quality.tests: pass
+evidence.quality.tests: input_status=pass; emitted=pass
+threshold.quality.coverage: >=80%
+evidence.quality.coverage: input_status=not_configured; emitted=80%
+threshold.quality.lint: pass
+evidence.quality.lint: input_status=pass; emitted=pass
+threshold.quality.audit: pass
+evidence.quality.audit: input_status=pass; emitted=pass
+threshold.quality.mutation: >=70%
+evidence.quality.mutation: input_status=not_configured; emitted=70%
+threshold.quality.complexity: <=10
+evidence.quality.complexity: input_status=not_configured; emitted=10
 ```
 
 ## Release Readiness Outcome
