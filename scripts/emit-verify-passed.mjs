@@ -91,13 +91,23 @@ function resolveQualityStatuses(options) {
 function buildPayload(options) {
   const statuses = resolveQualityStatuses(options);
 
+  const quality = {
+    tests: statuses.tests,
+    coverage: statuses.coverage,
+    lint: statuses.lint,
+    audit: statuses.audit,
+    mutation: statuses.mutation,
+    complexity: statuses.complexity,
+  };
+
   const payload = {
-    'quality.tests': statuses.tests,
-    'quality.coverage': statuses.coverage,
-    'quality.lint': statuses.lint,
-    'quality.audit': statuses.audit,
-    'quality.mutation': statuses.mutation,
-    'quality.complexity': statuses.complexity,
+    quality,
+    'quality.tests': quality.tests,
+    'quality.coverage': quality.coverage,
+    'quality.lint': quality.lint,
+    'quality.audit': quality.audit,
+    'quality.mutation': quality.mutation,
+    'quality.complexity': quality.complexity,
   };
 
   const taskId = resolveTaskId(options);

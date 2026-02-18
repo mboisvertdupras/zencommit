@@ -11,7 +11,7 @@ function runEmitVerifyPassed(args: string[]) {
 }
 
 describe('emit-verify-passed helper', () => {
-  it('prints a flattened verify payload with all required quality keys', () => {
+  it('prints grouped and flattened quality statuses in the verify payload', () => {
     const result = runEmitVerifyPassed([
       '--tests',
       'pass',
@@ -43,6 +43,14 @@ describe('emit-verify-passed helper', () => {
       task_id: 'task-123',
       commit: 'abc1234',
       summary: 'Verifier checks passed',
+      quality: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'pass',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
       'quality.tests': 'pass',
       'quality.coverage': 'not_configured',
       'quality.lint': 'pass',
@@ -51,11 +59,10 @@ describe('emit-verify-passed helper', () => {
       'quality.complexity': 'not_configured',
     });
 
-    expect(payload.quality).toBeUndefined();
     expect(payload.quality_report).toBeUndefined();
   });
 
-  it('defaults omitted quality flags to not_configured', () => {
+  it('defaults omitted quality flags to not_configured in grouped and flattened keys', () => {
     const result = runEmitVerifyPassed(['--tests', 'pass', '--lint', 'pass', '--dry-run']);
 
     expect(result.status).toBe(0);
@@ -64,6 +71,14 @@ describe('emit-verify-passed helper', () => {
     const payload = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
 
     expect(payload).toMatchObject({
+      quality: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'not_configured',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
       'quality.tests': 'pass',
       'quality.coverage': 'not_configured',
       'quality.lint': 'pass',
@@ -71,9 +86,6 @@ describe('emit-verify-passed helper', () => {
       'quality.mutation': 'not_configured',
       'quality.complexity': 'not_configured',
     });
-
-    expect(payload.quality).toBeUndefined();
-    expect(payload.quality_report).toBeUndefined();
   });
 
   it('fails when a quality status is invalid', () => {
