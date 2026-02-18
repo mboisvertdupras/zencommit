@@ -80,6 +80,28 @@ function parsePayloadLines(payload: string) {
   );
 }
 
+function expectThresholdEvidence(payload: Map<string, string>) {
+  expect(payload.get('threshold.quality.tests')).toBe('pass');
+  expect(payload.get('threshold.quality.coverage')).toBe('>=80%');
+  expect(payload.get('threshold.quality.lint')).toBe('pass');
+  expect(payload.get('threshold.quality.audit')).toBe('pass');
+  expect(payload.get('threshold.quality.mutation')).toBe('>=70%');
+  expect(payload.get('threshold.quality.complexity')).toBe('<=10');
+
+  expect(payload.get('evidence.quality.tests')).toContain('input_status=');
+  expect(payload.get('evidence.quality.tests')).toContain('emitted=');
+  expect(payload.get('evidence.quality.coverage')).toContain('input_status=');
+  expect(payload.get('evidence.quality.coverage')).toContain('emitted=');
+  expect(payload.get('evidence.quality.lint')).toContain('input_status=');
+  expect(payload.get('evidence.quality.lint')).toContain('emitted=');
+  expect(payload.get('evidence.quality.audit')).toContain('input_status=');
+  expect(payload.get('evidence.quality.audit')).toContain('emitted=');
+  expect(payload.get('evidence.quality.mutation')).toContain('input_status=');
+  expect(payload.get('evidence.quality.mutation')).toContain('emitted=');
+  expect(payload.get('evidence.quality.complexity')).toContain('input_status=');
+  expect(payload.get('evidence.quality.complexity')).toContain('emitted=');
+}
+
 describe('emit-verify-passed helper', () => {
   it('prints parser-compatible quality report lines in dry-run mode', () => {
     const result = runEmitVerifyPassed([
@@ -118,6 +140,7 @@ describe('emit-verify-passed helper', () => {
     expect(payload.get('quality.audit')).toBe('pass');
     expect(payload.get('quality.mutation')).toBe('70%');
     expect(payload.get('quality.complexity')).toBe('10');
+    expectThresholdEvidence(payload);
   });
 
   it('defaults omitted quality flags to parser-compatible passing evidence', () => {
@@ -134,6 +157,7 @@ describe('emit-verify-passed helper', () => {
     expect(payload.get('quality.audit')).toBe('pass');
     expect(payload.get('quality.mutation')).toBe('70%');
     expect(payload.get('quality.complexity')).toBe('10');
+    expectThresholdEvidence(payload);
   });
 
   it('accepts --flag=value syntax for quality and metadata flags', () => {
@@ -163,6 +187,7 @@ describe('emit-verify-passed helper', () => {
     expect(payload.get('quality.audit')).toBe('pass');
     expect(payload.get('quality.mutation')).toBe('70%');
     expect(payload.get('quality.complexity')).toBe('10');
+    expectThresholdEvidence(payload);
   });
 
   it('emits parser-compatible payload through ralph in non-dry-run mode', () => {
@@ -196,6 +221,7 @@ describe('emit-verify-passed helper', () => {
     expect(payload.get('quality.audit')).toBe('pass');
     expect(payload.get('quality.mutation')).toBe('70%');
     expect(payload.get('quality.complexity')).toBe('10');
+    expectThresholdEvidence(payload);
   });
 
   it('emits parser-compatible payload through npm script path used by verifier', () => {
@@ -233,6 +259,7 @@ describe('emit-verify-passed helper', () => {
     expect(payload.get('quality.audit')).toBe('pass');
     expect(payload.get('quality.mutation')).toBe('70%');
     expect(payload.get('quality.complexity')).toBe('10');
+    expectThresholdEvidence(payload);
   });
 
   it('emits all quality dimensions when non-dry-run omits quality flags', () => {
@@ -258,6 +285,7 @@ describe('emit-verify-passed helper', () => {
     expect(payload.get('quality.audit')).toBe('pass');
     expect(payload.get('quality.mutation')).toBe('70%');
     expect(payload.get('quality.complexity')).toBe('10');
+    expectThresholdEvidence(payload);
   });
 
   it('fails when a quality status is invalid', () => {

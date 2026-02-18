@@ -20,6 +20,15 @@ const QUALITY_FLAGS = [
   'complexity',
 ];
 
+const QUALITY_THRESHOLDS = {
+  tests: 'pass',
+  coverage: '>=80%',
+  lint: 'pass',
+  audit: 'pass',
+  mutation: '>=70%',
+  complexity: '<=10',
+};
+
 const METADATA_FLAGS = ['task-id', 'task_id', 'taskId', 'commit', 'summary'];
 
 const BOOLEAN_FLAGS = new Set(['dry-run', 'help', 'h']);
@@ -41,7 +50,10 @@ The helper emits a parser-compatible text quality report with all required lines
   quality.lint: <pass|fail>
   quality.audit: <pass|fail>
   quality.mutation: <number>%
-  quality.complexity: <number>`);
+  quality.complexity: <number>
+and explicit threshold/evidence context for each dimension:
+  threshold.quality.<dimension>: <threshold>
+  evidence.quality.<dimension>: <status + emitted value>`);
 }
 
 function parseArgs(argv) {
@@ -140,8 +152,33 @@ function renderComplexityScore(status) {
   return isPassingStatus(status) ? '10' : '11';
 }
 
+function renderQualityValues(statuses) {
+  return {
+    tests: renderPassFail(statuses.tests),
+    coverage: renderCoveragePercent(statuses.coverage),
+    lint: renderPassFail(statuses.lint),
+    audit: renderPassFail(statuses.audit),
+    mutation: renderMutationPercent(statuses.mutation),
+    complexity: renderComplexityScore(statuses.complexity),
+  };
+}
+
+function buildThresholdEvidenceLines(statuses, qualityValues) {
+  const lines = [];
+
+  for (const flag of QUALITY_FLAGS) {
+    lines.push(`threshold.quality.${flag}: ${QUALITY_THRESHOLDS[flag]}`);
+    lines.push(
+      `evidence.quality.${flag}: input_status=${statuses[flag]}; emitted=${qualityValues[flag]}`,
+    );
+  }
+
+  return lines;
+}
+
 function buildPayload(options) {
   const statuses = resolveQualityStatuses(options);
+  const qualityValues = renderQualityValues(statuses);
 
   const lines = [];
 
@@ -158,12 +195,14 @@ function buildPayload(options) {
     lines.push(`summary: ${options.summary}`);
   }
 
-  lines.push(`quality.tests: ${renderPassFail(statuses.tests)}`);
-  lines.push(`quality.coverage: ${renderCoveragePercent(statuses.coverage)}`);
-  lines.push(`quality.lint: ${renderPassFail(statuses.lint)}`);
-  lines.push(`quality.audit: ${renderPassFail(statuses.audit)}`);
-  lines.push(`quality.mutation: ${renderMutationPercent(statuses.mutation)}`);
-  lines.push(`quality.complexity: ${renderComplexityScore(statuses.complexity)}`);
+  lines.push(`quality.tests: ${qualityValues.tests}`);
+  lines.push(`quality.coverage: ${qualityValues.coverage}`);
+  lines.push(`quality.lint: ${qualityValues.lint}`);
+  lines.push(`quality.audit: ${qualityValues.audit}`);
+  lines.push(`quality.mutation: ${qualityValues.mutation}`);
+  lines.push(`quality.complexity: ${qualityValues.complexity}`);
+
+  lines.push(...buildThresholdEvidenceLines(statuses, qualityValues));
 
   return lines.join('\n');
 }
@@ -190,6 +229,19 @@ function assertCanonicalQualityPayload(payload) {
     const value = lineLookup.get(key);
     if (!value) {
       throw new Error(`Payload is missing ${key}`);
+    }
+  }
+
+  for (const flag of QUALITY_FLAGS) {
+    const thresholdKey = `threshold.quality.${flag}`;
+    const evidenceKey = `evidence.quality.${flag}`;
+
+    if (!lineLookup.get(thresholdKey)) {
+      throw new Error(`Payload is missing ${thresholdKey}`);
+    }
+
+    if (!lineLookup.get(evidenceKey)) {
+      throw new Error(`Payload is missing ${evidenceKey}`);
     }
   }
 
