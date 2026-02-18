@@ -38,6 +38,32 @@ function runEmitVerifyPassedWithFakeRalph(args: string[]) {
   }
 }
 
+function runEmitVerifyPassedNpmScriptWithFakeRalph(args: string[]) {
+  const fakeBinDir = mkdtempSync(resolve(tmpdir(), 'emit-verify-passed-npm-'));
+  const fakeRalphPath = resolve(fakeBinDir, 'ralph');
+  const capturePath = resolve(fakeBinDir, 'ralph-argv.json');
+
+  const fakeRalphSource = `#!/usr/bin/env node\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(process.env.RALPH_CAPTURE_PATH, JSON.stringify(process.argv.slice(2)));\n`;
+  writeFileSync(fakeRalphPath, fakeRalphSource);
+  chmodSync(fakeRalphPath, 0o755);
+
+  try {
+    const result = spawnSync('npm', ['run', 'emit:verify-passed', '--', ...args], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${fakeBinDir}${delimiter}${process.env.PATH ?? ''}`,
+        RALPH_CAPTURE_PATH: capturePath,
+      },
+    });
+
+    const emittedArgs = JSON.parse(readFileSync(capturePath, 'utf8')) as string[];
+    return { result, emittedArgs };
+  } finally {
+    rmSync(fakeBinDir, { recursive: true, force: true });
+  }
+}
+
 describe('emit-verify-passed helper', () => {
   it('prints grouped and flattened quality statuses in the verify payload', () => {
     const result = runEmitVerifyPassed([
@@ -191,6 +217,53 @@ describe('emit-verify-passed helper', () => {
       },
       'quality.tests': 'pass',
       'quality.coverage': 'not_configured',
+      'quality.lint': 'pass',
+      'quality.audit': 'pass',
+      'quality.mutation': 'not_configured',
+      'quality.complexity': 'not_configured',
+    });
+  });
+
+  it('emits canonical payload through npm script path used by verifier', () => {
+    const { result, emittedArgs } = runEmitVerifyPassedNpmScriptWithFakeRalph([
+      '--tests',
+      'pass',
+      '--coverage',
+      'pass',
+      '--lint',
+      'pass',
+      '--audit',
+      'pass',
+      '--mutation',
+      'not_configured',
+      '--complexity',
+      'not_configured',
+      '--task-id',
+      'task-npm',
+      '--commit',
+      'abc1234',
+      '--summary',
+      'Verifier checks passed',
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(emittedArgs.slice(0, 3)).toEqual(['emit', 'verify.passed', '--json']);
+
+    const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      task_id: 'task-npm',
+      commit: 'abc1234',
+      summary: 'Verifier checks passed',
+      quality: {
+        tests: 'pass',
+        coverage: 'pass',
+        lint: 'pass',
+        audit: 'pass',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
+      'quality.tests': 'pass',
+      'quality.coverage': 'pass',
       'quality.lint': 'pass',
       'quality.audit': 'pass',
       'quality.mutation': 'not_configured',
