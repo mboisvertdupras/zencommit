@@ -88,20 +88,8 @@ function resolveQualityStatuses(options) {
   return statuses;
 }
 
-function buildQualityReport(statuses) {
-  return {
-    tests: statuses.tests,
-    coverage: statuses.coverage,
-    lint: statuses.lint,
-    audit: statuses.audit,
-    mutation: statuses.mutation,
-    complexity: statuses.complexity,
-  };
-}
-
 function buildPayload(options) {
   const statuses = resolveQualityStatuses(options);
-  const qualityReport = buildQualityReport(statuses);
 
   const payload = {
     'quality.tests': statuses.tests,
@@ -110,9 +98,6 @@ function buildPayload(options) {
     'quality.audit': statuses.audit,
     'quality.mutation': statuses.mutation,
     'quality.complexity': statuses.complexity,
-    // Compatibility mirrors for consumers that expect grouped quality reports.
-    quality: qualityReport,
-    quality_report: { ...qualityReport },
   };
 
   const taskId = resolveTaskId(options);

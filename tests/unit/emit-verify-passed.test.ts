@@ -49,23 +49,10 @@ describe('emit-verify-passed helper', () => {
       'quality.audit': 'pass',
       'quality.mutation': 'not_configured',
       'quality.complexity': 'not_configured',
-      quality: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'pass',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      quality_report: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'pass',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
     });
+
+    expect(payload.quality).toBeUndefined();
+    expect(payload.quality_report).toBeUndefined();
   });
 
   it('defaults omitted quality flags to not_configured', () => {
@@ -83,23 +70,10 @@ describe('emit-verify-passed helper', () => {
       'quality.audit': 'not_configured',
       'quality.mutation': 'not_configured',
       'quality.complexity': 'not_configured',
-      quality: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'not_configured',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      quality_report: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'not_configured',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
     });
+
+    expect(payload.quality).toBeUndefined();
+    expect(payload.quality_report).toBeUndefined();
   });
 
   it('fails when a quality status is invalid', () => {
