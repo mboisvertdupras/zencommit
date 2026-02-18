@@ -68,7 +68,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
       - run: npm ci
       - name: Verify tag matches package.json version
@@ -86,5 +85,6 @@ jobs:
             echo "zencommit@$VERSION already published; skipping."
             exit 0
           fi
-          # Uses npm trusted publishing via GitHub OIDC (no long-lived token required).
+          # Use trusted publishing via GitHub OIDC; clear token auth if setup-node exported it.
+          unset NODE_AUTH_TOKEN
           npm publish --access public --provenance
