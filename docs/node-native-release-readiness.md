@@ -55,18 +55,16 @@ Verifier handoffs for this migration must include all required quality keys in t
 - `quality.mutation`
 - `quality.complexity`
 
-Canonical payload shape:
+Canonical payload shape (use fully-qualified quality keys expected by orchestration):
 
 ```json
 {
-  "quality": {
-    "tests": "pass",
-    "coverage": "pass",
-    "lint": "pass",
-    "audit": "pass",
-    "mutation": "not_configured",
-    "complexity": "not_configured"
-  }
+  "quality.tests": "pass",
+  "quality.coverage": "pass",
+  "quality.lint": "pass",
+  "quality.audit": "pass",
+  "quality.mutation": "not_configured",
+  "quality.complexity": "not_configured"
 }
 ```
 
@@ -80,14 +78,12 @@ The following payload is the required `verify.passed` shape for this migration a
 {
   "taskId": "task-1771372812-03d5",
   "summary": "Verifier quality payload completeness confirmed.",
-  "quality": {
-    "tests": "pass",
-    "coverage": "pass",
-    "lint": "pass",
-    "audit": "pass",
-    "mutation": "not_configured",
-    "complexity": "not_configured"
-  }
+  "quality.tests": "pass",
+  "quality.coverage": "pass",
+  "quality.lint": "pass",
+  "quality.audit": "pass",
+  "quality.mutation": "not_configured",
+  "quality.complexity": "not_configured"
 }
 ```
 
