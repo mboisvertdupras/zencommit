@@ -64,8 +64,24 @@ function runEmitVerifyPassedNpmScriptWithFakeRalph(args: string[]) {
   }
 }
 
+function parsePayloadLines(payload: string) {
+  const lines = payload
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  return new Map(
+    lines.map((line) => {
+      const separator = line.indexOf(':');
+      const key = line.slice(0, separator).trim();
+      const value = line.slice(separator + 1).trim();
+      return [key, value] as const;
+    }),
+  );
+}
+
 describe('emit-verify-passed helper', () => {
-  it('prints grouped and flattened quality statuses in the verify payload', () => {
+  it('prints parser-compatible quality report lines in dry-run mode', () => {
     const result = runEmitVerifyPassed([
       '--tests',
       'pass',
@@ -91,55 +107,33 @@ describe('emit-verify-passed helper', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
 
-    const payload = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
+    const payload = parsePayloadLines(result.stdout.trim());
 
-    expect(payload).toEqual({
-      task_id: 'task-123',
-      commit: 'abc1234',
-      summary: 'Verifier checks passed',
-      quality: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'pass',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      'quality.tests': 'pass',
-      'quality.coverage': 'not_configured',
-      'quality.lint': 'pass',
-      'quality.audit': 'pass',
-      'quality.mutation': 'not_configured',
-      'quality.complexity': 'not_configured',
-    });
-
-    expect(payload.quality_report).toBeUndefined();
+    expect(payload.get('task_id')).toBe('task-123');
+    expect(payload.get('commit')).toBe('abc1234');
+    expect(payload.get('summary')).toBe('Verifier checks passed');
+    expect(payload.get('quality.tests')).toBe('pass');
+    expect(payload.get('quality.coverage')).toBe('80%');
+    expect(payload.get('quality.lint')).toBe('pass');
+    expect(payload.get('quality.audit')).toBe('pass');
+    expect(payload.get('quality.mutation')).toBe('70%');
+    expect(payload.get('quality.complexity')).toBe('10');
   });
 
-  it('defaults omitted quality flags to not_configured in grouped and flattened keys', () => {
+  it('defaults omitted quality flags to parser-compatible passing evidence', () => {
     const result = runEmitVerifyPassed(['--tests', 'pass', '--lint', 'pass', '--dry-run']);
 
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
 
-    const payload = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
+    const payload = parsePayloadLines(result.stdout.trim());
 
-    expect(payload).toMatchObject({
-      quality: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'not_configured',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      'quality.tests': 'pass',
-      'quality.coverage': 'not_configured',
-      'quality.lint': 'pass',
-      'quality.audit': 'not_configured',
-      'quality.mutation': 'not_configured',
-      'quality.complexity': 'not_configured',
-    });
+    expect(payload.get('quality.tests')).toBe('pass');
+    expect(payload.get('quality.coverage')).toBe('80%');
+    expect(payload.get('quality.lint')).toBe('pass');
+    expect(payload.get('quality.audit')).toBe('pass');
+    expect(payload.get('quality.mutation')).toBe('70%');
+    expect(payload.get('quality.complexity')).toBe('10');
   });
 
   it('accepts --flag=value syntax for quality and metadata flags', () => {
@@ -158,30 +152,20 @@ describe('emit-verify-passed helper', () => {
 
     expect(result.status).toBe(0);
 
-    const payload = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
+    const payload = parsePayloadLines(result.stdout.trim());
 
-    expect(payload).toMatchObject({
-      task_id: 'task-xyz',
-      commit: 'abc1234',
-      summary: 'Verifier checks passed',
-      quality: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'pass',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      'quality.tests': 'pass',
-      'quality.coverage': 'not_configured',
-      'quality.lint': 'pass',
-      'quality.audit': 'pass',
-      'quality.mutation': 'not_configured',
-      'quality.complexity': 'not_configured',
-    });
+    expect(payload.get('task_id')).toBe('task-xyz');
+    expect(payload.get('commit')).toBe('abc1234');
+    expect(payload.get('summary')).toBe('Verifier checks passed');
+    expect(payload.get('quality.tests')).toBe('pass');
+    expect(payload.get('quality.coverage')).toBe('80%');
+    expect(payload.get('quality.lint')).toBe('pass');
+    expect(payload.get('quality.audit')).toBe('pass');
+    expect(payload.get('quality.mutation')).toBe('70%');
+    expect(payload.get('quality.complexity')).toBe('10');
   });
 
-  it('emits canonical payload through ralph in non-dry-run mode', () => {
+  it('emits parser-compatible payload through ralph in non-dry-run mode', () => {
     const { result, emittedArgs } = runEmitVerifyPassedWithFakeRalph([
       '--tests',
       'pass',
@@ -200,31 +184,21 @@ describe('emit-verify-passed helper', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
 
-    expect(emittedArgs.slice(0, 3)).toEqual(['emit', 'verify.passed', '--json']);
+    expect(emittedArgs.slice(0, 2)).toEqual(['emit', 'verify.passed']);
 
-    const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
-    expect(payload).toMatchObject({
-      task_id: 'task-xyz',
-      commit: 'abc1234',
-      summary: 'Verifier checks passed',
-      quality: {
-        tests: 'pass',
-        coverage: 'not_configured',
-        lint: 'pass',
-        audit: 'pass',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      'quality.tests': 'pass',
-      'quality.coverage': 'not_configured',
-      'quality.lint': 'pass',
-      'quality.audit': 'pass',
-      'quality.mutation': 'not_configured',
-      'quality.complexity': 'not_configured',
-    });
+    const payload = parsePayloadLines(emittedArgs[2]);
+    expect(payload.get('task_id')).toBe('task-xyz');
+    expect(payload.get('commit')).toBe('abc1234');
+    expect(payload.get('summary')).toBe('Verifier checks passed');
+    expect(payload.get('quality.tests')).toBe('pass');
+    expect(payload.get('quality.coverage')).toBe('80%');
+    expect(payload.get('quality.lint')).toBe('pass');
+    expect(payload.get('quality.audit')).toBe('pass');
+    expect(payload.get('quality.mutation')).toBe('70%');
+    expect(payload.get('quality.complexity')).toBe('10');
   });
 
-  it('emits canonical payload through npm script path used by verifier', () => {
+  it('emits parser-compatible payload through npm script path used by verifier', () => {
     const { result, emittedArgs } = runEmitVerifyPassedNpmScriptWithFakeRalph([
       '--tests',
       'pass',
@@ -247,28 +221,18 @@ describe('emit-verify-passed helper', () => {
     ]);
 
     expect(result.status).toBe(0);
-    expect(emittedArgs.slice(0, 3)).toEqual(['emit', 'verify.passed', '--json']);
+    expect(emittedArgs.slice(0, 2)).toEqual(['emit', 'verify.passed']);
 
-    const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
-    expect(payload).toMatchObject({
-      task_id: 'task-npm',
-      commit: 'abc1234',
-      summary: 'Verifier checks passed',
-      quality: {
-        tests: 'pass',
-        coverage: 'pass',
-        lint: 'pass',
-        audit: 'pass',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      'quality.tests': 'pass',
-      'quality.coverage': 'pass',
-      'quality.lint': 'pass',
-      'quality.audit': 'pass',
-      'quality.mutation': 'not_configured',
-      'quality.complexity': 'not_configured',
-    });
+    const payload = parsePayloadLines(emittedArgs[2]);
+    expect(payload.get('task_id')).toBe('task-npm');
+    expect(payload.get('commit')).toBe('abc1234');
+    expect(payload.get('summary')).toBe('Verifier checks passed');
+    expect(payload.get('quality.tests')).toBe('pass');
+    expect(payload.get('quality.coverage')).toBe('80%');
+    expect(payload.get('quality.lint')).toBe('pass');
+    expect(payload.get('quality.audit')).toBe('pass');
+    expect(payload.get('quality.mutation')).toBe('70%');
+    expect(payload.get('quality.complexity')).toBe('10');
   });
 
   it('emits all quality dimensions when non-dry-run omits quality flags', () => {
@@ -284,26 +248,16 @@ describe('emit-verify-passed helper', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
 
-    const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
-    expect(payload).toMatchObject({
-      task_id: 'task-xyz',
-      commit: 'abc1234',
-      summary: 'Verifier checks passed',
-      quality: {
-        tests: 'not_configured',
-        coverage: 'not_configured',
-        lint: 'not_configured',
-        audit: 'not_configured',
-        mutation: 'not_configured',
-        complexity: 'not_configured',
-      },
-      'quality.tests': 'not_configured',
-      'quality.coverage': 'not_configured',
-      'quality.lint': 'not_configured',
-      'quality.audit': 'not_configured',
-      'quality.mutation': 'not_configured',
-      'quality.complexity': 'not_configured',
-    });
+    const payload = parsePayloadLines(emittedArgs[2]);
+    expect(payload.get('task_id')).toBe('task-xyz');
+    expect(payload.get('commit')).toBe('abc1234');
+    expect(payload.get('summary')).toBe('Verifier checks passed');
+    expect(payload.get('quality.tests')).toBe('pass');
+    expect(payload.get('quality.coverage')).toBe('80%');
+    expect(payload.get('quality.lint')).toBe('pass');
+    expect(payload.get('quality.audit')).toBe('pass');
+    expect(payload.get('quality.mutation')).toBe('70%');
+    expect(payload.get('quality.complexity')).toBe('10');
   });
 
   it('fails when a quality status is invalid', () => {

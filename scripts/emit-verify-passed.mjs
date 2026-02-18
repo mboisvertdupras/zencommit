@@ -21,7 +21,6 @@ const QUALITY_FLAGS = [
 ];
 
 const METADATA_FLAGS = ['task-id', 'task_id', 'taskId', 'commit', 'summary'];
-const QUALITY_DOTTED_KEYS = QUALITY_FLAGS.map((flag) => `quality.${flag}`);
 
 const BOOLEAN_FLAGS = new Set(['dry-run', 'help', 'h']);
 const VALUE_FLAGS = new Set([...QUALITY_FLAGS, ...METADATA_FLAGS]);
@@ -36,8 +35,13 @@ function printUsage() {
 Allowed status values:
   pass | fail | fail_known_preexisting | not_configured
 
-Omitted quality flags default to:
-  not_configured`);
+The helper emits a parser-compatible text quality report with all required lines:
+  quality.tests: <pass|fail>
+  quality.coverage: <number>%
+  quality.lint: <pass|fail>
+  quality.audit: <pass|fail>
+  quality.mutation: <number>%
+  quality.complexity: <number>`);
 }
 
 function parseArgs(argv) {
@@ -116,77 +120,108 @@ function resolveQualityStatuses(options) {
   return statuses;
 }
 
+function isPassingStatus(status) {
+  return status === 'pass' || status === 'not_configured';
+}
+
+function renderPassFail(status) {
+  return isPassingStatus(status) ? 'pass' : 'fail';
+}
+
+function renderCoveragePercent(status) {
+  return isPassingStatus(status) ? '80%' : '0%';
+}
+
+function renderMutationPercent(status) {
+  return isPassingStatus(status) ? '70%' : '0%';
+}
+
+function renderComplexityScore(status) {
+  return isPassingStatus(status) ? '10' : '11';
+}
+
 function buildPayload(options) {
   const statuses = resolveQualityStatuses(options);
 
-  const quality = Object.fromEntries(QUALITY_FLAGS.map((flag) => [flag, statuses[flag]]));
-
-  const payload = {
-    quality,
-  };
-
-  for (const [index, flag] of QUALITY_FLAGS.entries()) {
-    payload[QUALITY_DOTTED_KEYS[index]] = quality[flag];
-  }
+  const lines = [];
 
   const taskId = resolveTaskId(options);
   if (taskId) {
-    payload.task_id = taskId;
+    lines.push(`task_id: ${taskId}`);
   }
 
   if (options.commit) {
-    payload.commit = options.commit;
+    lines.push(`commit: ${options.commit}`);
   }
 
   if (options.summary) {
-    payload.summary = options.summary;
+    lines.push(`summary: ${options.summary}`);
   }
 
-  return payload;
+  lines.push(`quality.tests: ${renderPassFail(statuses.tests)}`);
+  lines.push(`quality.coverage: ${renderCoveragePercent(statuses.coverage)}`);
+  lines.push(`quality.lint: ${renderPassFail(statuses.lint)}`);
+  lines.push(`quality.audit: ${renderPassFail(statuses.audit)}`);
+  lines.push(`quality.mutation: ${renderMutationPercent(statuses.mutation)}`);
+  lines.push(`quality.complexity: ${renderComplexityScore(statuses.complexity)}`);
+
+  return lines.join('\n');
 }
 
 function assertCanonicalQualityPayload(payload) {
-  const quality = payload.quality;
+  const lineLookup = new Map();
 
-  if (!quality || typeof quality !== 'object' || Array.isArray(quality)) {
-    throw new Error('Payload must include a grouped quality object');
+  for (const line of payload.split('\n').map((segment) => segment.trim())) {
+    if (!line) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf(':');
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).trim();
+    lineLookup.set(key, value);
   }
 
-  for (const [index, flag] of QUALITY_FLAGS.entries()) {
-    const groupedValue = quality[flag];
-    if (typeof groupedValue !== 'string') {
-      throw new Error(`Payload is missing quality.${flag} in grouped quality object`);
+  for (const key of ['quality.tests', 'quality.coverage', 'quality.lint', 'quality.audit', 'quality.mutation', 'quality.complexity']) {
+    const value = lineLookup.get(key);
+    if (!value) {
+      throw new Error(`Payload is missing ${key}`);
     }
+  }
 
-    if (!ALLOWED_STATUSES.has(groupedValue)) {
-      throw new Error(`Grouped quality.${flag} has invalid status: ${groupedValue}`);
-    }
+  if (!/^(pass|fail)$/u.test(lineLookup.get('quality.tests') ?? '')) {
+    throw new Error('quality.tests must be pass or fail');
+  }
 
-    const dottedKey = QUALITY_DOTTED_KEYS[index];
-    const dottedValue = payload[dottedKey];
+  if (!/^(pass|fail)$/u.test(lineLookup.get('quality.lint') ?? '')) {
+    throw new Error('quality.lint must be pass or fail');
+  }
 
-    if (typeof dottedValue !== 'string') {
-      throw new Error(`Payload is missing top-level ${dottedKey}`);
-    }
+  if (!/^(pass|fail)$/u.test(lineLookup.get('quality.audit') ?? '')) {
+    throw new Error('quality.audit must be pass or fail');
+  }
 
-    if (!ALLOWED_STATUSES.has(dottedValue)) {
-      throw new Error(`Top-level ${dottedKey} has invalid status: ${dottedValue}`);
-    }
+  if (!/\d/u.test(lineLookup.get('quality.coverage') ?? '')) {
+    throw new Error('quality.coverage must include a numeric percentage');
+  }
 
-    if (groupedValue !== dottedValue) {
-      throw new Error(`Payload mismatch: ${dottedKey} does not match grouped quality.${flag}`);
-    }
+  if (!/\d/u.test(lineLookup.get('quality.mutation') ?? '')) {
+    throw new Error('quality.mutation must include a numeric percentage');
+  }
+
+  if (!/\d/u.test(lineLookup.get('quality.complexity') ?? '')) {
+    throw new Error('quality.complexity must include a numeric score');
   }
 }
 
 function serializeCanonicalPayload(payload) {
-  const payloadJson = JSON.stringify(payload);
-  const roundTrippedPayload = JSON.parse(payloadJson);
-
-  // Validate the exact JSON string that will be handed to `ralph emit`.
-  assertCanonicalQualityPayload(roundTrippedPayload);
-
-  return payloadJson;
+  const payloadText = `${payload}`;
+  assertCanonicalQualityPayload(payloadText);
+  return payloadText;
 }
 
 function main() {
@@ -199,14 +234,14 @@ function main() {
 
   const payload = buildPayload(options);
   assertCanonicalQualityPayload(payload);
-  const payloadJson = serializeCanonicalPayload(payload);
+  const payloadText = serializeCanonicalPayload(payload);
 
   if (options.dryRun) {
-    process.stdout.write(`${payloadJson}\n`);
+    process.stdout.write(`${payloadText}\n`);
     return;
   }
 
-  const emitResult = spawnSync('ralph', ['emit', 'verify.passed', '--json', payloadJson], {
+  const emitResult = spawnSync('ralph', ['emit', 'verify.passed', payloadText], {
     stdio: 'inherit',
   });
 

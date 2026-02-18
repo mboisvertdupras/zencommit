@@ -92,45 +92,37 @@ hats:
       3. If a tool is not configured, report `not_configured` instead of omitting that quality dimension.
 
       ### `verify.passed` payload contract (required)
-      Include BOTH representations on every `verify.passed` event:
-      - Grouped object: `quality.tests`, `quality.coverage`, `quality.lint`, `quality.audit`, `quality.mutation`, `quality.complexity`
-      - Top-level fully-qualified keys: `quality.tests`, `quality.coverage`, `quality.lint`, `quality.audit`, `quality.mutation`, `quality.complexity`
-
-      This contract overrides any generic "keep payload brief" guidance for this event.
-      The grouped `quality` object is required; wrapper fields like `quality_handoff` do not satisfy the contract.
+      The event-loop validator parses a plain-text quality report (not JSON objects) from the `verify.passed` payload.
+      Include all required dimensions as `quality.*` lines:
+      - `quality.tests: <pass|fail>`
+      - `quality.coverage: <number>%`
+      - `quality.lint: <pass|fail>`
+      - `quality.audit: <pass|fail>`
+      - `quality.mutation: <number>%`
+      - `quality.complexity: <number>`
 
       Canonical payload shape:
-      ```json
-      {
-        "quality": {
-          "tests": "pass",
-          "coverage": "pass",
-          "lint": "pass",
-          "audit": "pass",
-          "mutation": "not_configured",
-          "complexity": "not_configured"
-        },
-        "quality.tests": "pass",
-        "quality.coverage": "pass",
-        "quality.lint": "pass",
-        "quality.audit": "pass",
-        "quality.mutation": "not_configured",
-        "quality.complexity": "not_configured"
-      }
+      ```text
+      task_id: task-123
+      commit: abc1234
+      summary: Verifier checks passed
+      quality.tests: pass
+      quality.coverage: 82%
+      quality.lint: pass
+      quality.audit: pass
+      quality.mutation: 71%
+      quality.complexity: 7
       ```
 
       Required emission path (enforced helper):
       `npm run emit:verify-passed -- [--tests <status>] [--coverage <status>] [--lint <status>] [--audit <status>] [--mutation <status>] [--complexity <status>] [--task-id <id>] [--commit <sha>] [--summary <text>]`
-      The helper emits `verify.passed` with the required grouped `quality` object and all top-level `quality.*` keys, defaulting omitted quality flags to `not_configured`, and rejects invalid quality statuses.
+      The helper emits parser-compatible `quality.*` lines and always includes all six required dimensions on the live `ralph emit verify.passed` call.
       Verifier events are explicit-only in this config: emit exactly one verification event and do not rely on implicit/default publishing.
       Do not call `ralph emit verify.passed` directly; always use the helper command above for `verify.passed` so payload validation runs at the emission chokepoint.
 
       Emission checklist (required before `npm run emit:verify-passed -- ...`):
-      1. Payload contains a `quality` object with all six dimensions.
-      2. Payload contains all six top-level `quality.*` keys listed above.
-      3. Each quality value uses only: `pass`, `fail`, `fail_known_preexisting`, or `not_configured`.
-      4. If any required grouped or top-level key is missing, emit `verify.failed` instead of `verify.passed`.
-
-      Allowed values for each quality field: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
-      Missing any required grouped or top-level key is a contract violation and should result in `verify.failed`.
+      1. Payload includes all six required `quality.*` lines listed above.
+      2. `quality.tests`, `quality.lint`, and `quality.audit` are `pass` or `fail`.
+      3. `quality.coverage`, `quality.mutation`, and `quality.complexity` contain numeric evidence.
+      4. If any required `quality.*` line is missing, emit `verify.failed` instead of `verify.passed`.
 
