@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { delimiter, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const scriptPath = resolve(process.cwd(), 'scripts/emit-verify-passed.mjs');
@@ -125,6 +127,74 @@ describe('emit-verify-passed helper', () => {
       'quality.mutation': 'not_configured',
       'quality.complexity': 'not_configured',
     });
+  });
+
+  it('emits canonical payload through ralph in non-dry-run mode', () => {
+    const fakeBinDir = mkdtempSync(resolve(tmpdir(), 'emit-verify-passed-'));
+    const fakeRalphPath = resolve(fakeBinDir, 'ralph');
+    const capturePath = resolve(fakeBinDir, 'ralph-argv.json');
+
+    const fakeRalphSource = `#!/usr/bin/env node\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(process.env.RALPH_CAPTURE_PATH, JSON.stringify(process.argv.slice(2)));\n`;
+    writeFileSync(fakeRalphPath, fakeRalphSource);
+    chmodSync(fakeRalphPath, 0o755);
+
+    try {
+      const result = spawnSync(
+        'node',
+        [
+          scriptPath,
+          '--tests',
+          'pass',
+          '--lint',
+          'pass',
+          '--audit',
+          'pass',
+          '--task-id',
+          'task-xyz',
+          '--commit',
+          'abc1234',
+          '--summary',
+          'Verifier checks passed',
+        ],
+        {
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            PATH: `${fakeBinDir}${delimiter}${process.env.PATH ?? ''}`,
+            RALPH_CAPTURE_PATH: capturePath,
+          },
+        },
+      );
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toBe('');
+
+      const emittedArgs = JSON.parse(readFileSync(capturePath, 'utf8')) as string[];
+      expect(emittedArgs.slice(0, 3)).toEqual(['emit', 'verify.passed', '--json']);
+
+      const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
+      expect(payload).toMatchObject({
+        task_id: 'task-xyz',
+        commit: 'abc1234',
+        summary: 'Verifier checks passed',
+        quality: {
+          tests: 'pass',
+          coverage: 'not_configured',
+          lint: 'pass',
+          audit: 'pass',
+          mutation: 'not_configured',
+          complexity: 'not_configured',
+        },
+        'quality.tests': 'pass',
+        'quality.coverage': 'not_configured',
+        'quality.lint': 'pass',
+        'quality.audit': 'pass',
+        'quality.mutation': 'not_configured',
+        'quality.complexity': 'not_configured',
+      });
+    } finally {
+      rmSync(fakeBinDir, { recursive: true, force: true });
+    }
   });
 
   it('fails when a quality status is invalid', () => {

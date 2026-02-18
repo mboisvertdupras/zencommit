@@ -118,12 +118,13 @@ hats:
       }
       ```
 
-      Preferred emission path (enforced helper):
+      Required emission path (enforced helper):
       `npm run emit:verify-passed -- [--tests <status>] [--coverage <status>] [--lint <status>] [--audit <status>] [--mutation <status>] [--complexity <status>] [--task-id <id>] [--commit <sha>] [--summary <text>]`
       The helper emits `verify.passed` with the required grouped `quality` object and all top-level `quality.*` keys, defaulting omitted quality flags to `not_configured`, and rejects invalid quality statuses.
-      Verifier events are explicit-only in this config: emit exactly one verification event via `ralph emit` (or the helper above) and do not rely on implicit/default publishing.
+      Verifier events are explicit-only in this config: emit exactly one verification event and do not rely on implicit/default publishing.
+      Do not call `ralph emit verify.passed` directly; always use the helper command above for `verify.passed` so payload validation runs at the emission chokepoint.
 
-      Emission checklist (required before `ralph emit "verify.passed"`):
+      Emission checklist (required before `npm run emit:verify-passed -- ...`):
       1. Payload contains a `quality` object with all six dimensions.
       2. Payload contains all six top-level `quality.*` keys listed above.
       3. Each quality value uses only: `pass`, `fail`, `fail_known_preexisting`, or `not_configured`.

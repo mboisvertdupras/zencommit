@@ -16,12 +16,14 @@ function readVerifierBlock() {
 }
 
 describe('verifier payload contract configuration', () => {
-  it('requires explicit emission and documents all required quality dimensions', () => {
+  it('requires helper-based explicit emission and documents all required quality dimensions', () => {
     const verifierBlock = readVerifierBlock();
 
     expect(verifierBlock).not.toMatch(/\n\s+default_publishes:/);
+    expect(verifierBlock).toContain('Required emission path (enforced helper)');
     expect(verifierBlock).toContain('npm run emit:verify-passed --');
     expect(verifierBlock).toContain('explicit-only in this config');
+    expect(verifierBlock).toContain('Do not call `ralph emit verify.passed` directly');
 
     for (const key of [
       'quality.tests',
