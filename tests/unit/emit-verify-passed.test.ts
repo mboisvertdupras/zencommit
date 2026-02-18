@@ -88,6 +88,45 @@ describe('emit-verify-passed helper', () => {
     });
   });
 
+  it('accepts --flag=value syntax for quality and metadata flags', () => {
+    const result = runEmitVerifyPassed([
+      '--tests=pass',
+      '--coverage=not_configured',
+      '--lint=pass',
+      '--audit=pass',
+      '--mutation=not_configured',
+      '--complexity=not_configured',
+      '--task-id=task-xyz',
+      '--commit=abc1234',
+      '--summary=Verifier checks passed',
+      '--dry-run',
+    ]);
+
+    expect(result.status).toBe(0);
+
+    const payload = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({
+      task_id: 'task-xyz',
+      commit: 'abc1234',
+      summary: 'Verifier checks passed',
+      quality: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'pass',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
+      'quality.tests': 'pass',
+      'quality.coverage': 'not_configured',
+      'quality.lint': 'pass',
+      'quality.audit': 'pass',
+      'quality.mutation': 'not_configured',
+      'quality.complexity': 'not_configured',
+    });
+  });
+
   it('fails when a quality status is invalid', () => {
     const result = runEmitVerifyPassed([
       '--tests',
@@ -107,5 +146,12 @@ describe('emit-verify-passed helper', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('Invalid status for --coverage: unknown');
+  });
+
+  it('fails on unknown flags to prevent silently malformed payloads', () => {
+    const result = runEmitVerifyPassed(['--tests', 'pass', '--quality.tests', 'pass', '--dry-run']);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('Unknown flag: --quality.tests');
   });
 });

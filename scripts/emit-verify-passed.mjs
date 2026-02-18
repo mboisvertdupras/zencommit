@@ -20,6 +20,12 @@ const QUALITY_FLAGS = [
   'complexity',
 ];
 
+const METADATA_FLAGS = ['task-id', 'task_id', 'taskId', 'commit', 'summary'];
+const QUALITY_DOTTED_KEYS = QUALITY_FLAGS.map((flag) => `quality.${flag}`);
+
+const BOOLEAN_FLAGS = new Set(['dry-run', 'help', 'h']);
+const VALUE_FLAGS = new Set([...QUALITY_FLAGS, ...METADATA_FLAGS]);
+
 function printUsage() {
   console.error(`Usage:
   node scripts/emit-verify-passed.mjs \\
@@ -42,12 +48,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
 
-    if (token === '--dry-run') {
-      result.dryRun = true;
-      continue;
-    }
-
-    if (token === '--help' || token === '-h') {
+    if (token === '-h') {
       result.help = true;
       continue;
     }
@@ -56,14 +57,41 @@ function parseArgs(argv) {
       throw new Error(`Unexpected positional argument: ${token}`);
     }
 
-    const key = token.slice(2);
-    const value = argv[i + 1];
-    if (value === undefined || value.startsWith('--')) {
+    const raw = token.slice(2);
+    const separatorIndex = raw.indexOf('=');
+    const key = separatorIndex >= 0 ? raw.slice(0, separatorIndex) : raw;
+    const inlineValue = separatorIndex >= 0 ? raw.slice(separatorIndex + 1) : undefined;
+
+    if (BOOLEAN_FLAGS.has(key)) {
+      if (inlineValue !== undefined) {
+        throw new Error(`Flag --${key} does not take a value`);
+      }
+
+      if (key === 'dry-run') {
+        result.dryRun = true;
+      }
+
+      if (key === 'help' || key === 'h') {
+        result.help = true;
+      }
+
+      continue;
+    }
+
+    if (!VALUE_FLAGS.has(key)) {
+      throw new Error(`Unknown flag: --${key}`);
+    }
+
+    const value = inlineValue ?? argv[i + 1];
+    if (!value || value.startsWith('--')) {
       throw new Error(`Missing value for --${key}`);
     }
 
     result[key] = value;
-    i += 1;
+
+    if (inlineValue === undefined) {
+      i += 1;
+    }
   }
 
   return result;
@@ -91,24 +119,15 @@ function resolveQualityStatuses(options) {
 function buildPayload(options) {
   const statuses = resolveQualityStatuses(options);
 
-  const quality = {
-    tests: statuses.tests,
-    coverage: statuses.coverage,
-    lint: statuses.lint,
-    audit: statuses.audit,
-    mutation: statuses.mutation,
-    complexity: statuses.complexity,
-  };
+  const quality = Object.fromEntries(QUALITY_FLAGS.map((flag) => [flag, statuses[flag]]));
 
   const payload = {
     quality,
-    'quality.tests': quality.tests,
-    'quality.coverage': quality.coverage,
-    'quality.lint': quality.lint,
-    'quality.audit': quality.audit,
-    'quality.mutation': quality.mutation,
-    'quality.complexity': quality.complexity,
   };
+
+  for (const [index, flag] of QUALITY_FLAGS.entries()) {
+    payload[QUALITY_DOTTED_KEYS[index]] = quality[flag];
+  }
 
   const taskId = resolveTaskId(options);
   if (taskId) {
@@ -126,6 +145,40 @@ function buildPayload(options) {
   return payload;
 }
 
+function assertCanonicalQualityPayload(payload) {
+  const quality = payload.quality;
+
+  if (!quality || typeof quality !== 'object' || Array.isArray(quality)) {
+    throw new Error('Payload must include a grouped quality object');
+  }
+
+  for (const [index, flag] of QUALITY_FLAGS.entries()) {
+    const groupedValue = quality[flag];
+    if (typeof groupedValue !== 'string') {
+      throw new Error(`Payload is missing quality.${flag} in grouped quality object`);
+    }
+
+    if (!ALLOWED_STATUSES.has(groupedValue)) {
+      throw new Error(`Grouped quality.${flag} has invalid status: ${groupedValue}`);
+    }
+
+    const dottedKey = QUALITY_DOTTED_KEYS[index];
+    const dottedValue = payload[dottedKey];
+
+    if (typeof dottedValue !== 'string') {
+      throw new Error(`Payload is missing top-level ${dottedKey}`);
+    }
+
+    if (!ALLOWED_STATUSES.has(dottedValue)) {
+      throw new Error(`Top-level ${dottedKey} has invalid status: ${dottedValue}`);
+    }
+
+    if (groupedValue !== dottedValue) {
+      throw new Error(`Payload mismatch: ${dottedKey} does not match grouped quality.${flag}`);
+    }
+  }
+}
+
 function main() {
   const options = parseArgs(process.argv.slice(2));
 
@@ -135,6 +188,7 @@ function main() {
   }
 
   const payload = buildPayload(options);
+  assertCanonicalQualityPayload(payload);
 
   if (options.dryRun) {
     process.stdout.write(`${JSON.stringify(payload)}\n`);
