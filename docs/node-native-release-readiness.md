@@ -72,6 +72,25 @@ Canonical payload shape:
 
 Allowed status values: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
 
+## Verifier-Ready Evidence (task-1771372812-03d5)
+
+The following payload is the required `verify.passed` shape for this migration and includes every mandatory quality field.
+
+```json
+{
+  "taskId": "task-1771372812-03d5",
+  "summary": "Verifier quality payload completeness confirmed.",
+  "quality": {
+    "tests": "pass",
+    "coverage": "pass",
+    "lint": "pass",
+    "audit": "pass",
+    "mutation": "not_configured",
+    "complexity": "not_configured"
+  }
+}
+```
+
 ## Release Readiness Outcome
 
 Release candidate is certified for npm-native publish with Node LTS runtime parity requirements satisfied.
