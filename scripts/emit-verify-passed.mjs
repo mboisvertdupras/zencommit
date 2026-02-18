@@ -9,6 +9,8 @@ const ALLOWED_STATUSES = new Set([
   'not_configured',
 ]);
 
+const DEFAULT_STATUS = 'not_configured';
+
 const QUALITY_FLAGS = [
   'tests',
   'coverage',
@@ -21,12 +23,15 @@ const QUALITY_FLAGS = [
 function printUsage() {
   console.error(`Usage:
   node scripts/emit-verify-passed.mjs \\
-    --tests <status> --coverage <status> --lint <status> \\
-    --audit <status> --mutation <status> --complexity <status> \\
+    [--tests <status>] [--coverage <status>] [--lint <status>] \\
+    [--audit <status>] [--mutation <status>] [--complexity <status>] \\
     [--task-id <id>] [--commit <sha>] [--summary <text>] [--dry-run]
 
 Allowed status values:
-  pass | fail | fail_known_preexisting | not_configured`);
+  pass | fail | fail_known_preexisting | not_configured
+
+Omitted quality flags default to:
+  not_configured`);
 }
 
 function parseArgs(argv) {
@@ -68,27 +73,47 @@ function resolveTaskId(options) {
   return options['task-id'] ?? options.task_id ?? options.taskId;
 }
 
-function buildPayload(options) {
-  const missingFlags = QUALITY_FLAGS.filter((flag) => typeof options[flag] !== 'string');
-  if (missingFlags.length > 0) {
-    throw new Error(`Missing required quality flags: ${missingFlags.map((flag) => `--${flag}`).join(', ')}`);
-  }
-
-  const payload = {
-    'quality.tests': options.tests,
-    'quality.coverage': options.coverage,
-    'quality.lint': options.lint,
-    'quality.audit': options.audit,
-    'quality.mutation': options.mutation,
-    'quality.complexity': options.complexity,
-  };
+function resolveQualityStatuses(options) {
+  const statuses = {};
 
   for (const flag of QUALITY_FLAGS) {
-    const value = options[flag];
+    const value = typeof options[flag] === 'string' ? options[flag] : DEFAULT_STATUS;
     if (!ALLOWED_STATUSES.has(value)) {
       throw new Error(`Invalid status for --${flag}: ${value}`);
     }
+
+    statuses[flag] = value;
   }
+
+  return statuses;
+}
+
+function buildQualityReport(statuses) {
+  return {
+    tests: statuses.tests,
+    coverage: statuses.coverage,
+    lint: statuses.lint,
+    audit: statuses.audit,
+    mutation: statuses.mutation,
+    complexity: statuses.complexity,
+  };
+}
+
+function buildPayload(options) {
+  const statuses = resolveQualityStatuses(options);
+  const qualityReport = buildQualityReport(statuses);
+
+  const payload = {
+    'quality.tests': statuses.tests,
+    'quality.coverage': statuses.coverage,
+    'quality.lint': statuses.lint,
+    'quality.audit': statuses.audit,
+    'quality.mutation': statuses.mutation,
+    'quality.complexity': statuses.complexity,
+    // Compatibility mirrors for consumers that expect grouped quality reports.
+    quality: qualityReport,
+    quality_report: { ...qualityReport },
+  };
 
   const taskId = resolveTaskId(options);
   if (taskId) {

@@ -11,7 +11,7 @@ function runEmitVerifyPassed(args: string[]) {
 }
 
 describe('emit-verify-passed helper', () => {
-  it('prints a flattened verify payload with required quality keys', () => {
+  it('prints a flattened verify payload with all required quality keys', () => {
     const result = runEmitVerifyPassed([
       '--tests',
       'pass',
@@ -37,7 +37,7 @@ describe('emit-verify-passed helper', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
 
-    const payload = JSON.parse(result.stdout.trim()) as Record<string, string>;
+    const payload = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
 
     expect(payload).toEqual({
       task_id: 'task-123',
@@ -49,16 +49,57 @@ describe('emit-verify-passed helper', () => {
       'quality.audit': 'pass',
       'quality.mutation': 'not_configured',
       'quality.complexity': 'not_configured',
+      quality: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'pass',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
+      quality_report: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'pass',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
     });
-    expect(Object.hasOwn(payload, 'quality')).toBe(false);
-    expect(Object.hasOwn(payload, 'quality_handoff')).toBe(false);
   });
 
-  it('fails when required quality flags are missing', () => {
-    const result = runEmitVerifyPassed(['--tests', 'pass', '--dry-run']);
+  it('defaults omitted quality flags to not_configured', () => {
+    const result = runEmitVerifyPassed(['--tests', 'pass', '--lint', 'pass', '--dry-run']);
 
-    expect(result.status).toBe(1);
-    expect(result.stderr).toContain('Missing required quality flags');
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+
+    const payload = JSON.parse(result.stdout.trim()) as Record<string, unknown>;
+
+    expect(payload).toMatchObject({
+      'quality.tests': 'pass',
+      'quality.coverage': 'not_configured',
+      'quality.lint': 'pass',
+      'quality.audit': 'not_configured',
+      'quality.mutation': 'not_configured',
+      'quality.complexity': 'not_configured',
+      quality: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'not_configured',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
+      quality_report: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'not_configured',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
+    });
   });
 
   it('fails when a quality status is invalid', () => {

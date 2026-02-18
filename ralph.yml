@@ -118,8 +118,8 @@ hats:
       ```
 
       Preferred emission path (enforced helper):
-      `npm run emit:verify-passed -- --tests <status> --coverage <status> --lint <status> --audit <status> --mutation <status> --complexity <status> [--task-id <id>] [--commit <sha>] [--summary <text>]`
-      The helper emits `verify.passed` with the required top-level `quality.*` keys and rejects missing/invalid quality fields.
+      `npm run emit:verify-passed -- [--tests <status>] [--coverage <status>] [--lint <status>] [--audit <status>] [--mutation <status>] [--complexity <status>] [--task-id <id>] [--commit <sha>] [--summary <text>]`
+      The helper emits `verify.passed` with all required top-level `quality.*` keys, defaulting omitted quality flags to `not_configured`, and rejects invalid quality statuses.
 
       Emission checklist (required before `ralph emit "verify.passed"`):
       1. Payload contains all six top-level `quality.*` keys listed above.
