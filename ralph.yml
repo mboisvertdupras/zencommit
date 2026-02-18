@@ -102,6 +102,8 @@ hats:
       - `quality.complexity`
 
       Use top-level fully-qualified keys (do not nest them inside a `quality` object).
+      This contract overrides any generic "keep payload brief" guidance for this event.
+      Never emit a nested `quality` object or wrapper fields like `quality_handoff` in place of required top-level keys.
 
       Canonical payload shape:
       ```json
@@ -114,6 +116,11 @@ hats:
         "quality.complexity": "not_configured"
       }
       ```
+
+      Emission checklist (required before `ralph emit "verify.passed"`):
+      1. Payload contains all six top-level `quality.*` keys listed above.
+      2. Each key uses only: `pass`, `fail`, `fail_known_preexisting`, or `not_configured`.
+      3. If any key is missing, emit `verify.failed` instead of `verify.passed`.
 
       Allowed values for each quality field: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
       Missing any required key is a contract violation and should result in `verify.failed`.
