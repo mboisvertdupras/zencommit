@@ -70,14 +70,14 @@ Canonical payload shape (use fully-qualified quality keys expected by orchestrat
 
 Allowed status values: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
 
-## Verifier-Ready Evidence (task-1771372812-03d5)
+## Verifier-Ready Evidence (task-1771373310-3950)
 
 The following payload is the required `verify.passed` shape for this migration and includes every mandatory quality field.
 
 ```json
 {
-  "taskId": "task-1771372812-03d5",
-  "summary": "Verifier quality payload completeness confirmed.",
+  "taskId": "task-1771373310-3950",
+  "summary": "Verifier quality payload completeness enforced for orchestration handoff.",
   "quality.tests": "pass",
   "quality.coverage": "pass",
   "quality.lint": "pass",
