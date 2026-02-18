@@ -12,6 +12,32 @@ function runEmitVerifyPassed(args: string[]) {
   });
 }
 
+function runEmitVerifyPassedWithFakeRalph(args: string[]) {
+  const fakeBinDir = mkdtempSync(resolve(tmpdir(), 'emit-verify-passed-'));
+  const fakeRalphPath = resolve(fakeBinDir, 'ralph');
+  const capturePath = resolve(fakeBinDir, 'ralph-argv.json');
+
+  const fakeRalphSource = `#!/usr/bin/env node\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(process.env.RALPH_CAPTURE_PATH, JSON.stringify(process.argv.slice(2)));\n`;
+  writeFileSync(fakeRalphPath, fakeRalphSource);
+  chmodSync(fakeRalphPath, 0o755);
+
+  try {
+    const result = spawnSync('node', [scriptPath, ...args], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${fakeBinDir}${delimiter}${process.env.PATH ?? ''}`,
+        RALPH_CAPTURE_PATH: capturePath,
+      },
+    });
+
+    const emittedArgs = JSON.parse(readFileSync(capturePath, 'utf8')) as string[];
+    return { result, emittedArgs };
+  } finally {
+    rmSync(fakeBinDir, { recursive: true, force: true });
+  }
+}
+
 describe('emit-verify-passed helper', () => {
   it('prints grouped and flattened quality statuses in the verify payload', () => {
     const result = runEmitVerifyPassed([
@@ -130,71 +156,81 @@ describe('emit-verify-passed helper', () => {
   });
 
   it('emits canonical payload through ralph in non-dry-run mode', () => {
-    const fakeBinDir = mkdtempSync(resolve(tmpdir(), 'emit-verify-passed-'));
-    const fakeRalphPath = resolve(fakeBinDir, 'ralph');
-    const capturePath = resolve(fakeBinDir, 'ralph-argv.json');
+    const { result, emittedArgs } = runEmitVerifyPassedWithFakeRalph([
+      '--tests',
+      'pass',
+      '--lint',
+      'pass',
+      '--audit',
+      'pass',
+      '--task-id',
+      'task-xyz',
+      '--commit',
+      'abc1234',
+      '--summary',
+      'Verifier checks passed',
+    ]);
 
-    const fakeRalphSource = `#!/usr/bin/env node\nimport { writeFileSync } from 'node:fs';\nwriteFileSync(process.env.RALPH_CAPTURE_PATH, JSON.stringify(process.argv.slice(2)));\n`;
-    writeFileSync(fakeRalphPath, fakeRalphSource);
-    chmodSync(fakeRalphPath, 0o755);
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
 
-    try {
-      const result = spawnSync(
-        'node',
-        [
-          scriptPath,
-          '--tests',
-          'pass',
-          '--lint',
-          'pass',
-          '--audit',
-          'pass',
-          '--task-id',
-          'task-xyz',
-          '--commit',
-          'abc1234',
-          '--summary',
-          'Verifier checks passed',
-        ],
-        {
-          encoding: 'utf8',
-          env: {
-            ...process.env,
-            PATH: `${fakeBinDir}${delimiter}${process.env.PATH ?? ''}`,
-            RALPH_CAPTURE_PATH: capturePath,
-          },
-        },
-      );
+    expect(emittedArgs.slice(0, 3)).toEqual(['emit', 'verify.passed', '--json']);
 
-      expect(result.status).toBe(0);
-      expect(result.stderr).toBe('');
+    const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      task_id: 'task-xyz',
+      commit: 'abc1234',
+      summary: 'Verifier checks passed',
+      quality: {
+        tests: 'pass',
+        coverage: 'not_configured',
+        lint: 'pass',
+        audit: 'pass',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
+      'quality.tests': 'pass',
+      'quality.coverage': 'not_configured',
+      'quality.lint': 'pass',
+      'quality.audit': 'pass',
+      'quality.mutation': 'not_configured',
+      'quality.complexity': 'not_configured',
+    });
+  });
 
-      const emittedArgs = JSON.parse(readFileSync(capturePath, 'utf8')) as string[];
-      expect(emittedArgs.slice(0, 3)).toEqual(['emit', 'verify.passed', '--json']);
+  it('emits all quality dimensions when non-dry-run omits quality flags', () => {
+    const { result, emittedArgs } = runEmitVerifyPassedWithFakeRalph([
+      '--task-id',
+      'task-xyz',
+      '--commit',
+      'abc1234',
+      '--summary',
+      'Verifier checks passed',
+    ]);
 
-      const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
-      expect(payload).toMatchObject({
-        task_id: 'task-xyz',
-        commit: 'abc1234',
-        summary: 'Verifier checks passed',
-        quality: {
-          tests: 'pass',
-          coverage: 'not_configured',
-          lint: 'pass',
-          audit: 'pass',
-          mutation: 'not_configured',
-          complexity: 'not_configured',
-        },
-        'quality.tests': 'pass',
-        'quality.coverage': 'not_configured',
-        'quality.lint': 'pass',
-        'quality.audit': 'pass',
-        'quality.mutation': 'not_configured',
-        'quality.complexity': 'not_configured',
-      });
-    } finally {
-      rmSync(fakeBinDir, { recursive: true, force: true });
-    }
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe('');
+
+    const payload = JSON.parse(emittedArgs[3]) as Record<string, unknown>;
+    expect(payload).toMatchObject({
+      task_id: 'task-xyz',
+      commit: 'abc1234',
+      summary: 'Verifier checks passed',
+      quality: {
+        tests: 'not_configured',
+        coverage: 'not_configured',
+        lint: 'not_configured',
+        audit: 'not_configured',
+        mutation: 'not_configured',
+        complexity: 'not_configured',
+      },
+      'quality.tests': 'not_configured',
+      'quality.coverage': 'not_configured',
+      'quality.lint': 'not_configured',
+      'quality.audit': 'not_configured',
+      'quality.mutation': 'not_configured',
+      'quality.complexity': 'not_configured',
+    });
   });
 
   it('fails when a quality status is invalid', () => {

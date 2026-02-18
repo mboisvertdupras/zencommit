@@ -179,6 +179,16 @@ function assertCanonicalQualityPayload(payload) {
   }
 }
 
+function serializeCanonicalPayload(payload) {
+  const payloadJson = JSON.stringify(payload);
+  const roundTrippedPayload = JSON.parse(payloadJson);
+
+  // Validate the exact JSON string that will be handed to `ralph emit`.
+  assertCanonicalQualityPayload(roundTrippedPayload);
+
+  return payloadJson;
+}
+
 function main() {
   const options = parseArgs(process.argv.slice(2));
 
@@ -189,13 +199,14 @@ function main() {
 
   const payload = buildPayload(options);
   assertCanonicalQualityPayload(payload);
+  const payloadJson = serializeCanonicalPayload(payload);
 
   if (options.dryRun) {
-    process.stdout.write(`${JSON.stringify(payload)}\n`);
+    process.stdout.write(`${payloadJson}\n`);
     return;
   }
 
-  const emitResult = spawnSync('ralph', ['emit', 'verify.passed', '--json', JSON.stringify(payload)], {
+  const emitResult = spawnSync('ralph', ['emit', 'verify.passed', '--json', payloadJson], {
     stdio: 'inherit',
   });
 
