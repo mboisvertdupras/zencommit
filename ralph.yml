@@ -28,7 +28,6 @@ hats:
     description: "Executes one atomic refactoring step safely with verification."
     triggers: ["refactor.task"]
     publishes: ["refactor.done", "refactor.blocked"]
-    default_publishes: "refactor.done"
     instructions: |
       ## REFACTORER MODE
 
@@ -55,6 +54,8 @@ hats:
       4. **COMMIT** — Document the change
          - Commit with clear message (see format below)
          - Publish event
+
+      Refactorer events are explicit-only in this config: publish exactly one event via `ralph emit` and do not rely on implicit/default publishing.
 
       ### Commit Format
       ```
