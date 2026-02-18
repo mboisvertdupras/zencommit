@@ -80,7 +80,6 @@ hats:
     description: "Verifies refactoring preserved behavior via tests and checks."
     triggers: ["refactor.done"]
     publishes: ["verify.passed", "verify.failed"]
-    default_publishes: "verify.passed"
     instructions: |
       ## VERIFIER MODE
 
@@ -122,6 +121,7 @@ hats:
       Preferred emission path (enforced helper):
       `npm run emit:verify-passed -- [--tests <status>] [--coverage <status>] [--lint <status>] [--audit <status>] [--mutation <status>] [--complexity <status>] [--task-id <id>] [--commit <sha>] [--summary <text>]`
       The helper emits `verify.passed` with the required grouped `quality` object and all top-level `quality.*` keys, defaulting omitted quality flags to `not_configured`, and rejects invalid quality statuses.
+      Verifier events are explicit-only in this config: emit exactly one verification event via `ralph emit` (or the helper above) and do not rely on implicit/default publishing.
 
       Emission checklist (required before `ralph emit "verify.passed"`):
       1. Payload contains a `quality` object with all six dimensions.
