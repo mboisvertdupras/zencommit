@@ -60,8 +60,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
     defaults:
       run:
         shell: bash
@@ -88,4 +86,5 @@ jobs:
             echo "zencommit@$VERSION already published; skipping."
             exit 0
           fi
+          # Uses npm trusted publishing via GitHub OIDC (no long-lived token required).
           npm publish --access public --provenance
