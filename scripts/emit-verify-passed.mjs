@@ -2,23 +2,11 @@
 
 import { spawnSync } from 'node:child_process';
 
-const ALLOWED_STATUSES = new Set([
-  'pass',
-  'fail',
-  'fail_known_preexisting',
-  'not_configured',
-]);
+const ALLOWED_STATUSES = new Set(['pass', 'fail', 'fail_known_preexisting', 'not_configured']);
 
 const DEFAULT_STATUS = 'not_configured';
 
-const QUALITY_FLAGS = [
-  'tests',
-  'coverage',
-  'lint',
-  'audit',
-  'mutation',
-  'complexity',
-];
+const QUALITY_FLAGS = ['tests', 'coverage', 'lint', 'audit', 'mutation', 'complexity'];
 
 const QUALITY_THRESHOLDS = {
   tests: 'pass',
@@ -225,7 +213,14 @@ function assertCanonicalQualityPayload(payload) {
     lineLookup.set(key, value);
   }
 
-  for (const key of ['quality.tests', 'quality.coverage', 'quality.lint', 'quality.audit', 'quality.mutation', 'quality.complexity']) {
+  for (const key of [
+    'quality.tests',
+    'quality.coverage',
+    'quality.lint',
+    'quality.audit',
+    'quality.mutation',
+    'quality.complexity',
+  ]) {
     const value = lineLookup.get(key);
     if (!value) {
       throw new Error(`Payload is missing ${key}`);

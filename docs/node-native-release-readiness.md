@@ -18,6 +18,20 @@ All required release-readiness gates were rerun on Node/npm and passed.
 - `npm exec zencommit -- --help`
 - `npm pack --json` (package artifact verification)
 
+## Latest Revalidation Snapshot (2026-02-17 21:04 EST)
+
+- `npm ci`: pass.
+- `npm run lint`: pass.
+- `npm run format:check`: pass.
+- `npm test`: pass (10 files, 32 tests).
+- `npm run build`: pass.
+- `npm run guard:no-bun-runtime`: pass (no Bun runtime references detected).
+- `npm run smoke:install-matrix`: pass (`global`, `npx`, `local`).
+- `npm audit --omit=dev`: pass (0 vulnerabilities).
+- `node dist/index.js --help`: pass (expected command/flag surface).
+- `npm exec zencommit -- --help`: pass (expected command/flag surface).
+- `npm pack --json`: pass (`zencommit-0.1.5.tgz`, `shasum` `92f73871a1b75bd884b969a42adb6ee2a1fa8df8`, `entryCount` 67).
+
 ## Acceptance Criteria Mapping
 
 1. Given a clean checkout on latest Node LTS, when `npm ci` runs, then install succeeds without requiring Bun.
