@@ -14,7 +14,6 @@
   "scripts": {
     "lint": "oxlint . --type-aware --type-check --tsconfig tsconfig.json --deny-warnings --max-warnings 0 --ignore-pattern 'node_modules/**' --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**' --ignore-pattern '.gsd/**'",
     "lint:fix": "oxlint . --fix --type-aware --type-check --tsconfig tsconfig.json --deny-warnings --max-warnings 0 --ignore-pattern 'node_modules/**' --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**' --ignore-pattern '.gsd/**'",
-    "guard:no-bun-runtime": "node -e \"console.log('guard:no-bun-runtime is retired; Bun runtime enforcement is covered by the Oxlint/typecheck/build gate after Bun removal.')\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
@@ -22,7 +21,6 @@
     "test": "npm run test:run",
     "test:run": "vitest run",
     "smoke:install-matrix": "node scripts/smoke-install-matrix.mjs",
-    "emit:verify-passed": "node scripts/emit-verify-passed.mjs",
     "clean": "node scripts/clean-dist.mjs",
     "build:ts": "tsc -p tsconfig.build.json",
     "build:assets": "node scripts/copy-runtime-assets.mjs",

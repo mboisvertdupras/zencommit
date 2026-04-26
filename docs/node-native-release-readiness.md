@@ -30,13 +30,11 @@ S07 reran these gates from the package checkout for version `0.2.5`; every comma
 - `npm run format:check`
 - `npm audit --audit-level=low`
 - `npm outdated --json`
-- `node scripts/audit-baseline.mjs --check`
 - `npm run smoke:install-matrix` (global, `npx`, and local dependency modes)
 
 Additional release-maintainer probes remain useful before publishing from a fresh clone, but they are not separate open S07 blockers once the command matrix above is green:
 
 - `npm ci`
-- `npm test -- tests/integration/docs-parity.test.ts`
 - `node dist/index.js --help`
 - `node dist/index.js auth --help`
 - `node dist/index.js config --help`
@@ -46,8 +44,8 @@ Additional release-maintainer probes remain useful before publishing from a fres
 ## M002 Evidence Covered
 
 - S05 behavior coverage restored parity-sensitive CLI behavior, including exit codes `0`, `2`, `3`, and `4`, configuration precedence, auth fallback behavior, and dry-run outputs.
-- S06 docs parity coverage verifies the built help surface and documentation claims for the command groups and options above.
-- S07 final-gate coverage passed `npm run typecheck`, `npm run build`, `npm test`, `npm run lint`, `npm run format:check`, `npm audit --audit-level=low`, `npm outdated --json`, `node scripts/audit-baseline.mjs --check`, and `npm run smoke:install-matrix` after refreshing direct dependency drift.
+- S06 docs parity coverage verifies the built help surface for the command groups and options above.
+- S07 final-gate coverage passed `npm run typecheck`, `npm run build`, `npm test`, `npm run lint`, `npm run format:check`, `npm audit --audit-level=low`, `npm outdated --json`, and `npm run smoke:install-matrix` after refreshing direct dependency drift.
 - Dependency/security posture uses the low-threshold `npm audit --audit-level=low` command so low-severity advisories are visible rather than hidden by `--omit=dev`; the S07 run reported 0 vulnerabilities.
 - Direct dependency drift is closed for this evidence set: `npm outdated --json` returned `{}` after the lockfile refreshed `@openrouter/ai-sdk-provider` to `2.8.1` within the existing package range.
 - Linting is the Oxlint surface; do not document ESLint as the active maintainer gate.

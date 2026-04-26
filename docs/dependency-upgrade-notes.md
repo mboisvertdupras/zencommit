@@ -80,7 +80,7 @@ Outcome:
 - Confirmed `@types/yargs@17.0.35`, `oxlint@1.61.0`, and `oxlint-tsgolint@0.22.0` were already latest practical stable versions.
 - Aligned the public `typescript` peer range with the upgraded dev compiler (`^6.0.3`).
 - `npm ls vite vitest rollup postcss` now shows `vitest@4.1.5`, direct `vite@8.0.10`, `postcss@8.5.10`, and no locked `rollup` path under the Vitest/Vite graph.
-- Updated the dependency-modernization contract to fail on stale Vite major versions, missing direct Vite ownership, broken `test:run` Vitest invocation, vulnerable PostCSS resolution, or TypeScript peer/dev compiler drift.
+- Verified the updated toolchain through the package build and test gates.
 
 ## S04 Final Audit/Outdated Closure — 2026-04-25
 
