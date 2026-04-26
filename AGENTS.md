@@ -4,8 +4,6 @@
 
 - `src/index.ts` is the TypeScript CLI entrypoint; compiled runtime artifacts are emitted to `dist/`.
 - `bin/zencommit.js` is the npm launcher that imports `dist/index.js`.
-- Migration scope and acceptance criteria live under `specs/nodejs-rewrite-npm-native-install/`.
-- `docs/spec.md` is a legacy implementation spec; prefer the rewrite specs above for active runtime/tooling decisions.
 - Tooling metadata lives in `package.json`, `package-lock.json`, and TypeScript configs (`tsconfig*.json`).
 
 ## Build, Test, and Development Commands

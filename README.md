@@ -425,7 +425,6 @@ zencommit/
 │   ├── ui/                # Interactive prompts
 │   └── util/              # Utility functions
 ├── tests/                 # Test files
-├── docs/                  # Documentation
 └── bin/                   # Executable scripts
 ```
 
