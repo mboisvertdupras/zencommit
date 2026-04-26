@@ -1,6 +1,6 @@
-import { ConfigLoadError, resolveConfig, resolveConfigWithSources } from '../config/load.js';
+import { resolveConfig, resolveConfigWithSources } from '../config/load.js';
 import { validateConfig } from '../config/validate.js';
-import type { CommitStyle, DiffMode, ResolvedConfig } from '../config/types.js';
+import type { ResolvedConfig } from '../config/types.js';
 import { createMetadataResolver } from '../metadata/index.js';
 import { getRepoRoot } from '../git/repo.js';
 import { getDiff, getFileList, getFileSummary } from '../git/diff.js';
@@ -16,74 +16,28 @@ import { truncateDiffByFile, truncateDiffSmart } from '../llm/truncate.js';
 import { generateCommitMessage } from '../llm/generate.js';
 import { confirmCommit } from '../ui/prompts.js';
 import { openEditor } from '../ui/editor.js';
-import { exec, ExecError } from '../util/exec.js';
+import { exec } from '../util/exec.js';
 import yoctoSpinner from 'yocto-spinner';
 import { getVerbosity, logBlock, logJson, logVerbose, setVerbosity } from '../util/logger.js';
 import { redactObject } from '../util/redact.js';
-
-const DEFAULT_MAX_SUBJECT_CHARS = 72;
-
-export interface DefaultCommandArgs {
-  yes?: boolean;
-  dryRun?: boolean;
-  all?: boolean;
-  unstaged?: boolean;
-  commit?: boolean;
-  push?: boolean;
-  model?: string;
-  format?: CommitStyle;
-  lang?: string;
-  noBody?: boolean;
-  verbose?: number;
-  '--'?: string[];
-}
-
-const applyOverrides = (config: ResolvedConfig, args: DefaultCommandArgs): ResolvedConfig => {
-  const updated = { ...config };
-  if (args.model) {
-    updated.ai = { ...updated.ai, model: args.model };
-  }
-  if (args.format) {
-    updated.commit = { ...updated.commit, style: args.format };
-  }
-  if (args.lang) {
-    updated.commit = { ...updated.commit, language: args.lang };
-  }
-  if (args.noBody) {
-    updated.commit = { ...updated.commit, includeBody: false };
-  }
-  return updated;
-};
-
-const resolveDiffMode = (config: ResolvedConfig, args: DefaultCommandArgs): DiffMode => {
-  if (args.unstaged) {
-    return 'unstaged';
-  }
-  if (args.all) {
-    return 'staged';
-  }
-  return config.git.diffMode;
-};
+import {
+  applyCliOverrides,
+  buildCommitDecision,
+  buildPromptInput,
+  classifyDefaultCommandError,
+  DEFAULT_MAX_SUBJECT_CHARS,
+  formatPreview,
+  getTokenLimits,
+  parseEditedMessage,
+  resolveDiffPlan,
+  type DefaultCommandArgs,
+} from './default-flow.js';
 
 const maybeAutoStage = async (shouldStage: boolean, cwd?: string): Promise<void> => {
   if (!shouldStage) {
     return;
   }
-  await exec(['git', 'add', '-A'], { cwd });
-};
-
-const formatPreview = (subject: string, body: string): string => {
-  if (body.trim().length === 0) {
-    return subject.trim();
-  }
-  return `${subject.trim()}\n\n${body.trim()}`;
-};
-
-const parseEditedMessage = (text: string): { subject: string; body: string } => {
-  const lines = text.split(/\r?\n/);
-  const subject = lines.shift() ?? '';
-  const body = lines.join('\n').trim();
-  return { subject: subject.trim(), body };
+  await exec(['git', 'add', '-A'], { cwd, operation: 'git add all changes' });
 };
 
 export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void> => {
@@ -99,20 +53,12 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
     logVerbose(1, `repo root: ${repoRoot}`);
 
     let config: ResolvedConfig;
-    try {
-      if (getVerbosity() >= 1) {
-        const resolved = await resolveConfigWithSources(repoRoot);
-        config = resolved.config;
-        logJson(1, 'config sources', resolved.sourceMap);
-      } else {
-        config = await resolveConfig(repoRoot);
-      }
-    } catch (error) {
-      if (error instanceof ConfigLoadError) {
-        console.error(error.message);
-        process.exit(2);
-      }
-      throw error;
+    if (getVerbosity() >= 1) {
+      const resolved = await resolveConfigWithSources(repoRoot);
+      config = resolved.config;
+      logJson(1, 'config sources', resolved.sourceMap);
+    } else {
+      config = await resolveConfig(repoRoot);
     }
     if (getVerbosity() >= 2) {
       logJson(2, 'resolved config', redactObject(config));
@@ -126,7 +72,7 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
       process.exit(2);
     }
 
-    config = applyOverrides(config, args);
+    config = applyCliOverrides(config, args);
     if (getVerbosity() >= 2) {
       logJson(2, 'cli overrides', {
         model: args.model,
@@ -135,9 +81,7 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
         noBody: args.noBody ?? false,
       });
     }
-    const requestedDiffMode = resolveDiffMode(config, args);
-    const effectiveDiffMode: DiffMode = requestedDiffMode === 'all' ? 'staged' : requestedDiffMode;
-    const autoStage = args.all || config.git.autoStage || requestedDiffMode === 'all';
+    const { requestedDiffMode, effectiveDiffMode, autoStage } = resolveDiffPlan(config, args);
     logVerbose(
       1,
       `diff mode: requested=${requestedDiffMode} effective=${effectiveDiffMode} autoStage=${autoStage}`,
@@ -172,7 +116,7 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
     const metadataResolver = createMetadataResolver(config.metadata, repoRoot);
     const modelMetadata = await metadataResolver.getModel(config.ai.model);
 
-    const limits = modelMetadata?.limits ?? ({ context: 8000, input: 8000, output: null } as const);
+    const limits = getTokenLimits(modelMetadata);
 
     if (!modelMetadata) {
       console.warn('Model metadata not found. Using conservative token limits.');
@@ -181,15 +125,7 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
     }
 
     const encoding = getEncodingForModel(config.ai.model);
-    const promptInput = {
-      style: config.commit.style,
-      language: config.commit.language,
-      includeBody: config.commit.includeBody,
-      emoji: config.commit.emoji,
-      maxSubjectChars: DEFAULT_MAX_SUBJECT_CHARS,
-      fileList,
-      diffText: '',
-    };
+    const promptInput = buildPromptInput(config, fileList);
 
     const promptWithoutDiff = await buildPromptWithoutDiff(promptInput);
     const overheadTokens = countTokens(
@@ -275,19 +211,18 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
     console.log('\n' + formatPreview(message.subject, message.body) + '\n');
 
     const extraArgs = args['--'] ?? [];
-    const allowCommit = effectiveDiffMode !== 'unstaged' || args.commit;
-    const shouldCommit = allowCommit && !args.dryRun;
+    const commitDecision = buildCommitDecision({
+      effectiveDiffMode,
+      dryRun: args.dryRun,
+      commit: args.commit,
+      extraArgs,
+    });
     if (getVerbosity() >= 1) {
-      logJson(1, 'commit decision', {
-        allowCommit,
-        shouldCommit,
-        extraArgs,
-        dryRun: args.dryRun ?? false,
-      });
+      logJson(1, 'commit decision', commitDecision);
     }
 
-    if (!shouldCommit) {
-      if (effectiveDiffMode === 'unstaged' && !args.commit) {
+    if (!commitDecision.shouldCommit) {
+      if (commitDecision.skipReason === 'unstaged-without-commit') {
         console.warn('Unstaged diff selected; skipping commit unless --commit is provided.');
       }
       process.exit(0);
@@ -316,17 +251,8 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
       await pushChanges(repoRoot);
     }
   } catch (error) {
-    if (error instanceof ExecError) {
-      console.error(error.stderr || error.message);
-      process.exit(3);
-    }
-    const message = (error as Error).message ?? 'Unknown error.';
-    if (/API key/i.test(message)) {
-      console.error(message);
-      console.error('Run `zencommit auth login` to store credentials.');
-      process.exit(2);
-    }
-    console.error(message);
-    process.exit(4);
+    const failure = classifyDefaultCommandError(error);
+    console.error(failure.message);
+    process.exit(failure.exitCode);
   }
 };

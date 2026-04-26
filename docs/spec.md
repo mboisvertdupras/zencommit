@@ -1,6 +1,6 @@
 # Build Spec — `zencommit` (AI Commit Message CLI)
 
-**Purpose:** This document is the _implementation spec_ for an AI agent to build a Node.js + TypeScript CLI that generates git commit messages using an LLM.
+**Purpose:** This document is the _implementation spec_ for the current Node.js + TypeScript CLI that generates git commit messages using an LLM. Current package metadata requires Node.js `>=22.14.0` and npm-based installs; Bun references belong only to historical migration inventory.
 
 **Working identifiers (use these consistently in code):**
 
@@ -47,6 +47,8 @@
 
 **Flags (MVP):**
 
+- `--version` (boolean): show the installed package version.
+- `--help` (boolean): show top-level or subcommand help.
 - `--yes` (boolean): skip confirmation and commit immediately.
 - `--dry-run` (boolean): do not call `git commit`; print output.
 - `--all` / `-a` (boolean): stage all (`git add -A`) before generating message.
@@ -57,7 +59,7 @@
 - `--format <conventional|freeform>`: override commit style.
 - `--lang <code>`: override language.
 - `--no-body` (boolean): generate subject-only.
-- `-v`, `-vv`, `-vvv` (count): increase verbosity (never secrets).
+- `--verbose` / `-v`, `-vv`, `-vvv` (count): increase verbosity (never secrets).
 - `--` passthrough: anything after `--` is forwarded to `git commit`.
 
 **Exit codes (MVP):**
@@ -121,7 +123,8 @@ Non-interactive:
 
 Uses the active **metadata provider** (models.dev by default) and cached metadata to search and inspect models.
 
-- `zencommit models search <query>`: search by id/name.
+- `zencommit models search [query]`: search by id/name.
+  - `--max-items <number>` limits displayed search/autocomplete results (default `10`).
 - `zencommit models info <modelId>`: show token limits, capabilities, and pricing.
 
 ---
@@ -181,7 +184,7 @@ Load in this order:
     "confirmBeforeCommit": true
   },
   "diff": {
-    "truncateStrategy": "byFile",
+    "truncateStrategy": "smart",
     "includeFileList": true,
     "excludeGitignoreFiles": true,
     "maxFiles": 200,

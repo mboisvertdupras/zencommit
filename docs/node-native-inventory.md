@@ -1,6 +1,6 @@
 # Node-Native Migration Inventory (Bun Usage)
 
-This inventory maps all Bun-specific runtime, tooling, CI, and documentation usage that must be addressed to make `zencommit` fully Node/npm-native.
+This inventory is historical migration context: it maps the Bun-specific runtime, tooling, CI, and documentation usage that must be addressed during the Bun-to-Node migration to make `zencommit` fully Node/npm-native. It is not current setup guidance; current maintainer commands live in `README.md`, `AGENTS.md`, and package scripts.
 
 ## Runtime code (must refactor)
 
@@ -24,7 +24,6 @@ This inventory maps all Bun-specific runtime, tooling, CI, and documentation usa
 | Build script           | `bun build --compile`                | `package.json:21`         | Replace with Node-compatible packaging flow (for example `tsup`/`esbuild` + standalone binary strategy, or JS-only npm package) |
 | Dev types              | `@types/bun` dependency              | `package.json:63`         | Remove once Bun globals are gone                                                                                                |
 | Lockfile               | Bun lockfile in repo                 | `bun.lock`                | Replace with `package-lock.json`                                                                                                |
-| ESLint globals         | `Bun` defined as global              | `eslint.config.js:23`     | Remove Bun global after runtime refactor                                                                                        |
 | Generated-file scoring | Explicit `bun.lock` lockfile pattern | `src/llm/truncate.ts:274` | Keep as optional historical pattern or remove if Bun support is dropped                                                         |
 | Gitignore comment      | Mentions Bun install                 | `.gitignore:1`            | Update comment to npm install wording                                                                                           |
 

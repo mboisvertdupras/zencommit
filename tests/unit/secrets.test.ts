@@ -3,16 +3,28 @@ import { runAuthStatus } from '../../src/commands/auth.js';
 import {
   deleteSecret,
   getSecret,
+  MacOsKeychainSecretStore,
   resetSecretStoreForTesting,
   resolveRuntimeSecrets,
   SecretStoreUnavailableError,
   setSecret,
   setSecretStoreForTesting,
+  type ExecRunner,
   type SecretStore,
 } from '../../src/auth/secrets.js';
+import { ExecError, formatCommandForDisplay } from '../../src/util/exec.js';
 
 describe('secrets adapter', () => {
+  const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
+
+  const usePlatform = (platform: NodeJS.Platform): void => {
+    Object.defineProperty(process, 'platform', { value: platform });
+  };
+
   afterEach(() => {
+    if (originalPlatform) {
+      Object.defineProperty(process, 'platform', originalPlatform);
+    }
     resetSecretStoreForTesting();
     delete process.env.OPENAI_API_KEY;
     delete process.env.GOOGLE_GENERATIVE_AI_API_KEY;
@@ -103,6 +115,28 @@ describe('secrets adapter', () => {
     expect(openaiLine).not.toContain(token);
   });
 
+  it('reports environment fallback in auth status without printing the token', async () => {
+    const token = 'env-fallback-token-1234';
+    const unavailableStore: SecretStore = {
+      set: (): Promise<void> => Promise.reject(new SecretStoreUnavailableError('unavailable')),
+      get: (): Promise<string | null> =>
+        Promise.reject(new SecretStoreUnavailableError('unavailable')),
+      delete: (): Promise<void> => Promise.reject(new SecretStoreUnavailableError('unavailable')),
+    };
+
+    setSecretStoreForTesting(unavailableStore);
+    process.env.OPENAI_API_KEY = token;
+
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    await runAuthStatus();
+
+    const lines = logSpy.mock.calls.map((call) => String(call[0]));
+    const openaiLine = lines.find((line) => line.startsWith('OPENAI_API_KEY:'));
+
+    expect(openaiLine).toBe('OPENAI_API_KEY: set in environment');
+    expect(lines.join('\n')).not.toContain(token);
+  });
+
   it('falls back to environment lookup when secure store is unavailable', async () => {
     const unavailableStore: SecretStore = {
       set: (): Promise<void> => Promise.reject(new SecretStoreUnavailableError('unavailable')),
@@ -121,5 +155,92 @@ describe('secrets adapter', () => {
     await expect(setSecret('OPENAI_API_KEY', 'ignored')).rejects.toThrow(
       SecretStoreUnavailableError,
     );
+  });
+
+  it('redacts macOS keychain password arguments when storing secrets', async () => {
+    usePlatform('darwin');
+    const fakeToken = 'sk-secret-token-1234';
+    let capturedCommand: string[] | null = null;
+    let capturedRedactedArgs: number[] = [];
+    const runner: ExecRunner = (command, options = {}) => {
+      capturedCommand = command;
+      capturedRedactedArgs = options.redactedArgs ?? [];
+      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+    };
+
+    const store = new MacOsKeychainSecretStore('zencommit-test', runner);
+    await store.set('OPENAI_API_KEY', fakeToken);
+
+    expect(capturedCommand).toEqual([
+      'security',
+      'add-generic-password',
+      '-U',
+      '-s',
+      'zencommit-test',
+      '-a',
+      'OPENAI_API_KEY',
+      '-w',
+      fakeToken,
+    ]);
+    const display = formatCommandForDisplay(capturedCommand ?? [], {
+      redactedArgs: capturedRedactedArgs,
+    });
+    expect(display).toContain('<redacted>');
+    expect(display).not.toContain(fakeToken);
+  });
+
+  it('treats missing macOS keychain entries as absent secrets', async () => {
+    usePlatform('darwin');
+    const runner: ExecRunner = () =>
+      Promise.resolve({
+        stdout: '',
+        stderr:
+          'security: SecKeychainSearchCopyNext: The specified item could not be found in the keychain.',
+        exitCode: 44,
+      });
+
+    const store = new MacOsKeychainSecretStore('zencommit-test', runner);
+
+    await expect(store.get('OPENAI_API_KEY')).resolves.toBeNull();
+    await expect(store.delete('OPENAI_API_KEY')).resolves.toBeUndefined();
+  });
+
+  it('converts keychain failures into bounded secret-safe guidance', async () => {
+    usePlatform('darwin');
+    const fakeToken = 'sk-secret-token-1234';
+    const longStderr = `security denied ${fakeToken} ${'x'.repeat(6000)}`;
+    const command = [
+      'security',
+      'add-generic-password',
+      '-U',
+      '-s',
+      'zencommit-test',
+      '-a',
+      'OPENAI_API_KEY',
+      '-w',
+      fakeToken,
+    ];
+    const runner: ExecRunner = () =>
+      Promise.reject(
+        new ExecError('Command failed: security add-generic-password', 51, '', longStderr, {
+          command,
+          commandDisplay: formatCommandForDisplay(command, { redactedArgs: [8] }),
+          operation: 'macOS Keychain store OPENAI_API_KEY',
+          safeStderr: 'security denied <redacted> ' + 'x'.repeat(6000),
+        }),
+      );
+
+    const store = new MacOsKeychainSecretStore('zencommit-test', runner);
+
+    await expect(store.set('OPENAI_API_KEY', fakeToken)).rejects.toSatisfy((error: unknown) => {
+      const message = (error as Error).message;
+      expect(message).toContain('Failed to store OPENAI_API_KEY in macOS Keychain');
+      expect(message).toContain(
+        'Use the OPENAI_API_KEY environment variable or run `zencommit auth login`.',
+      );
+      expect(message).not.toContain(fakeToken);
+      expect(message.length).toBeLessThan(4500);
+      return true;
+    });
   });
 });

@@ -227,26 +227,31 @@ export const truncateDiffByFile = (
   }
 
   if (remaining > 0) {
-    const extras = fileSizes.map((size, index) => Math.max(0, size - allocations[index]));
+    const extras = fileSizes.map((size, index) => Math.max(0, size - (allocations[index] ?? 0)));
     const extrasTotal = extras.reduce((sum, size) => sum + size, 0);
     for (let i = 0; i < files.length; i += 1) {
       if (remaining <= 0) {
         break;
       }
-      const extraShare = extrasTotal > 0 ? Math.floor((extras[i] / extrasTotal) * remaining) : 0;
-      allocations[i] += extraShare;
+      const extra = extras[i] ?? 0;
+      const extraShare = extrasTotal > 0 ? Math.floor((extra / extrasTotal) * remaining) : 0;
+      allocations[i] = (allocations[i] ?? 0) + extraShare;
     }
   }
 
   const outputLines: string[] = [];
   let truncated = false;
   for (let i = 0; i < files.length; i += 1) {
+    const file = files[i];
+    if (!file) {
+      continue;
+    }
     const allocation = allocations[i] ?? 0;
     if (allocation <= 0) {
       truncated = true;
       continue;
     }
-    const section = buildByFileSection(files[i], allocation, encoding);
+    const section = buildByFileSection(file, allocation, encoding);
     if (outputLines.length > 0 && section.lines.length > 0) {
       outputLines.push('');
     }

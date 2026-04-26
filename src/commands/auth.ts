@@ -52,7 +52,7 @@ const verifyCredentials = async (
           { role: 'system', content: 'Reply with OK.' },
           { role: 'user', content: 'OK' },
         ],
-        maxTokens: 4,
+        maxOutputTokens: 4,
         temperature: 0,
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),

@@ -75,6 +75,30 @@ export const normalizeModelsDevData = (data: unknown): ModelMetadata[] => {
   return models;
 };
 
+const requireUsableModelsDevData = (data: unknown, source: string): ModelMetadata[] => {
+  const models = normalizeModelsDevData(data);
+  if (models.length === 0) {
+    throw new Error(`models.dev metadata from ${source} did not contain any usable model metadata`);
+  }
+  return models;
+};
+
+const normalizeCacheData = (
+  data: unknown,
+  cachePath: string,
+  cacheState: 'fresh' | 'stale',
+): ModelMetadata[] | null => {
+  const models = normalizeModelsDevData(data);
+  if (models.length === 0) {
+    logVerbose(
+      1,
+      `metadata: ignoring ${cacheState} models.dev cache ${cachePath}: no usable model metadata`,
+    );
+    return null;
+  }
+  return models;
+};
+
 export const createModelsDevProvider = (config: MetadataConfig): MetadataProvider => {
   const cachePath = path.join(getCacheRoot(), 'zencommit', 'metadata', 'modelsdev.cache.json');
   let cachedModels: ModelMetadata[] | null = null;
@@ -90,9 +114,12 @@ export const createModelsDevProvider = (config: MetadataConfig): MetadataProvide
       cache && isCacheFresh(cache.mtimeMs, config.providers.modelsdev.cacheTtlHours);
 
     if (cacheFresh && cache) {
-      logVerbose(2, `metadata: cache hit ${cachePath}`);
-      cachedModels = normalizeModelsDevData(cache.data);
-      return cachedModels;
+      const models = normalizeCacheData(cache.data, cachePath, 'fresh');
+      if (models) {
+        logVerbose(2, `metadata: cache hit ${cachePath}`);
+        cachedModels = models;
+        return cachedModels;
+      }
     }
 
     try {
@@ -103,18 +130,31 @@ export const createModelsDevProvider = (config: MetadataConfig): MetadataProvide
       if (!response.ok) {
         throw new Error(`models.dev responded with ${response.status}`);
       }
-      const data = (await response.json()) as unknown;
+      let data: unknown;
+      try {
+        data = (await response.json()) as unknown;
+      } catch (error) {
+        throw new Error(
+          `Failed to parse models.dev response from ${config.providers.modelsdev.url}: ${(error as Error).message}`,
+        );
+      }
+      cachedModels = requireUsableModelsDevData(data, config.providers.modelsdev.url);
       await writeCache(cachePath, data);
       logVerbose(2, `metadata: cache write ${cachePath}`);
-      cachedModels = normalizeModelsDevData(data);
       return cachedModels;
     } catch (error) {
       if (cache) {
-        const staleNote = cacheFresh ? '' : ' (cache is stale)';
-        console.warn(`models.dev fetch failed, using cached metadata${staleNote}.`);
-        logVerbose(2, `metadata: cache fallback ${cachePath}${staleNote}`);
-        cachedModels = normalizeModelsDevData(cache.data);
-        return cachedModels;
+        const cacheState = cacheFresh ? 'fresh' : 'stale';
+        const cacheModels = normalizeCacheData(cache.data, cachePath, cacheState);
+        if (cacheModels) {
+          const fallbackLabel = cacheFresh ? 'cached' : 'stale cached';
+          console.warn(
+            `models.dev fetch failed, using ${fallbackLabel} metadata from ${cachePath}.`,
+          );
+          logVerbose(2, `metadata: cache fallback ${cachePath} (${cacheState})`);
+          cachedModels = cacheModels;
+          return cachedModels;
+        }
       }
       throw error;
     }

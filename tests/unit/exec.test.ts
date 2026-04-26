@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { exec } from '../../src/util/exec.js';
+import { exec, formatCommandForDisplay } from '../../src/util/exec.js';
 import type { ExecError } from '../../src/util/exec.js';
 import { openEditor } from '../../src/ui/editor.js';
 
@@ -22,18 +22,20 @@ describe('exec', () => {
   });
 
   it('throws ExecError for non-zero exits when allowFailure is false', async () => {
+    const expectedError: Partial<ExecError> = {
+      name: 'ExecError',
+      exitCode: 5,
+      stdout: 'out',
+      stderr: 'err',
+    };
+
     await expect(
       exec([
         process.execPath,
         '-e',
         "process.stdout.write('out'); process.stderr.write('err'); process.exit(5);",
       ]),
-    ).rejects.toMatchObject<Partial<ExecError>>({
-      name: 'ExecError',
-      exitCode: 5,
-      stdout: 'out',
-      stderr: 'err',
-    });
+    ).rejects.toMatchObject(expectedError);
   });
 
   it('returns non-zero exit details when allowFailure is true', async () => {
@@ -51,6 +53,73 @@ describe('exec', () => {
       stderr: 'bad',
       exitCode: 7,
     });
+  });
+
+  it('rejects empty command input with safe command context', async () => {
+    await expect(exec([], { operation: 'empty command test' })).rejects.toMatchObject({
+      name: 'ExecError',
+      operation: 'empty command test',
+      commandDisplay: '(empty)',
+      exitCode: 1,
+    });
+  });
+
+  it('includes operation and spawn failure context without unsafe command output', async () => {
+    await expect(
+      exec(['zencommit-command-that-does-not-exist'], { operation: 'spawn missing binary' }),
+    ).rejects.toMatchObject({
+      name: 'ExecError',
+      operation: 'spawn missing binary',
+      commandDisplay: 'zencommit-command-that-does-not-exist',
+      exitCode: 1,
+    });
+  });
+
+  it('redacts marked command arguments and secret-like stderr in thrown diagnostics', async () => {
+    const fakeToken = 'sk-secret-token-1234';
+
+    await expect(
+      exec(
+        [
+          process.execPath,
+          '-e',
+          'process.stderr.write(process.argv.at(-1)); process.exit(9);',
+          fakeToken,
+        ],
+        { operation: 'store test secret', redactedArgs: [3] },
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      const execError = error as ExecError;
+      expect(execError.name).toBe('ExecError');
+      expect(execError.exitCode).toBe(9);
+      expect(execError.operation).toBe('store test secret');
+      expect(execError.commandDisplay).not.toContain(fakeToken);
+      expect(execError.message).not.toContain(fakeToken);
+      expect(execError.safeStderr).not.toContain(fakeToken);
+      expect(execError.stderr).toContain(fakeToken);
+      return true;
+    });
+  });
+
+  it('redacts macOS security password arguments in command displays', () => {
+    const fakeToken = 'sk-secret-token-1234';
+    const display = formatCommandForDisplay(
+      [
+        'security',
+        'add-generic-password',
+        '-U',
+        '-s',
+        'zencommit',
+        '-a',
+        'OPENAI_API_KEY',
+        '-w',
+        fakeToken,
+      ],
+      { redactedArgs: [8] },
+    );
+
+    expect(display).toContain('<redacted>');
+    expect(display).not.toContain(fakeToken);
   });
 });
 

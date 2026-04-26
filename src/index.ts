@@ -1,8 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import yargs from 'yargs/yargs';
 import { hideBin } from 'yargs/helpers';
 import type { Argv } from 'yargs';
@@ -39,7 +35,11 @@ type ModelsInfoArgs = {
 
 const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
   .scriptName('zencommit')
-  .parserConfiguration({ 'populate--': true, 'short-option-groups': true })
+  .parserConfiguration({
+    'boolean-negation': false,
+    'populate--': true,
+    'short-option-groups': true,
+  })
   .option('verbose', {
     alias: 'v',
     count: true,
@@ -47,7 +47,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
     describe: 'Increase verbosity (-v, -vv, -vvv)',
   })
   .middleware((argv) => {
-    const verboseCount = typeof argv.verbose === 'number' ? (argv.verbose as number) : 0;
+    const verboseCount = typeof argv.verbose === 'number' ? argv.verbose : 0;
     setVerbosity(verboseCount);
   })
   .command(
@@ -117,7 +117,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         .command(
           'login',
           'Store an API key in secure store',
-          (sub) =>
+          (sub: Argv<AuthArgs>) =>
             sub
               .option('env-key', { type: 'string', describe: 'Environment key name' })
               .option('token', { type: 'string', describe: 'Secret token value' }),
@@ -129,7 +129,8 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         .command(
           'logout',
           'Remove an API key from secure store',
-          (sub) => sub.option('env-key', { type: 'string', describe: 'Environment key name' }),
+          (sub: Argv<AuthArgs>) =>
+            sub.option('env-key', { type: 'string', describe: 'Environment key name' }),
           async (argv: AuthArgs) => {
             const { runAuthLogout } = await import('./commands/auth.js');
             await runAuthLogout({ envKey: argv['env-key'] });
@@ -190,7 +191,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         .command(
           'search [query]',
           'Search models',
-          (sub) =>
+          (sub: Argv<ModelsSearchArgs>) =>
             sub.positional('query', { type: 'string' }).option('max-items', {
               type: 'number',
               default: 10,
@@ -204,7 +205,7 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
         .command(
           'info <modelId>',
           'Show model info',
-          (sub) => sub.positional('modelId', { type: 'string', demandOption: true }),
+          { modelId: { type: 'string', demandOption: true } },
           async (argv: ModelsInfoArgs) => {
             const { runModelsInfo } = await import('./commands/models.js');
             await runModelsInfo(argv.modelId);

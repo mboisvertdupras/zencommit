@@ -17,7 +17,7 @@ import { togetherai } from '@ai-sdk/togetherai';
 import { vercel } from '@ai-sdk/vercel';
 import { xai } from '@ai-sdk/xai';
 import { openrouter } from '@openrouter/ai-sdk-provider';
-import { gitlab } from '@gitlab/gitlab-ai-provider';
+import { gitlab } from 'gitlab-ai-provider';
 import type { LanguageModel } from 'ai';
 
 const PROVIDER_FACTORIES: Record<string, (modelName: string) => LanguageModel> = {

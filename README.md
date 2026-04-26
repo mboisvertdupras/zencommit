@@ -88,17 +88,19 @@ zencommit --unstaged
 
 | Flag               | Description                                         |
 | ------------------ | --------------------------------------------------- |
+| `--help`           | Show top-level or subcommand help                   |
+| `--version`        | Show the installed package version                  |
+| `--verbose`, `-v`  | Increase verbosity (`-v`, `-vv`, `-vvv`)            |
 | `--yes`            | Skip confirmation and commit immediately            |
 | `--dry-run`        | Preview output without committing                   |
 | `--all`, `-a`      | Stage all changes (`git add -A`) before generating  |
 | `--unstaged`       | Use unstaged diff (never commits unless `--commit`) |
 | `--commit`         | Allow committing with `--unstaged`                  |
 | `--push`, `-p`     | Push after committing                               |
-| `--model <id>`     | Override model (e.g., `openai/gpt-4o`)              |
+| `--model <id>`     | Override model (e.g., `openai/gpt-5`)               |
 | `--format <style>` | Commit style: `conventional` or `freeform`          |
 | `--lang <code>`    | Language code (e.g., `en`, `fr`, `es`)              |
 | `--no-body`        | Generate subject line only                          |
-| `-v, -vv, -vvv`    | Increase verbosity level                            |
 | `--`               | Pass additional arguments to `git commit`           |
 
 ### Examples
@@ -131,8 +133,8 @@ Manage API keys with the `auth` command. Keys are stored via the secure-store ba
 # Interactive login
 zencommit auth login
 
-# Non-interactive login
-zencommit auth login --env-key OPENAI_API_KEY --token sk-...
+# Non-interactive login with a placeholder token value
+zencommit auth login --env-key OPENAI_API_KEY --token <token>
 
 # Remove stored key
 zencommit auth logout --env-key OPENAI_API_KEY
@@ -195,7 +197,7 @@ zencommit config validate
 {
   "$schema": "https://zencommit.dev/config.json",
   "ai": {
-    "model": "openai/gpt-4o",
+    "model": "openai/gpt-5",
     "temperature": 0.2,
     "maxOutputTokens": 4096,
     "timeoutMs": 20000,
@@ -245,13 +247,13 @@ zencommit config validate
 
 #### AI Settings (`ai`)
 
-| Option             | Type   | Default           | Description                              |
-| ------------------ | ------ | ----------------- | ---------------------------------------- |
-| `model`            | string | `"openai/gpt-4o"` | Model ID in `provider/model` format      |
-| `temperature`      | number | `0.2`             | Sampling temperature (0-1)               |
-| `maxOutputTokens`  | number | `4096`            | Maximum tokens in response               |
-| `timeoutMs`        | number | `20000`           | Request timeout in milliseconds          |
-| `openaiCompatible` | object | -                 | Settings for OpenAI-compatible providers |
+| Option             | Type   | Default          | Description                              |
+| ------------------ | ------ | ---------------- | ---------------------------------------- |
+| `model`            | string | `"openai/gpt-5"` | Model ID in `provider/model` format      |
+| `temperature`      | number | `0.2`            | Sampling temperature (0-1)               |
+| `maxOutputTokens`  | number | `4096`           | Maximum tokens in response               |
+| `timeoutMs`        | number | `20000`          | Request timeout in milliseconds          |
+| `openaiCompatible` | object | -                | Settings for OpenAI-compatible providers |
 
 #### Commit Settings (`commit`)
 
@@ -329,8 +331,12 @@ Explore available models using the `models` command. Model metadata is fetched f
 # Search for models
 zencommit models search gpt-4
 
+# Limit the number of displayed search/autocomplete results
+zencommit models search gpt-4 --max-items 5
+
 # Get detailed model info
-zencommit models info openai/gpt-4o
+zencommit models info <modelId>
+zencommit models info openai/gpt-5
 ```
 
 ## Smart Diff Truncation
@@ -364,7 +370,7 @@ Distributes token budget proportionally across files, ensuring each file gets a 
 
 ### Prerequisites
 
-- Node.js >= 22
+- Node.js >= 22.14.0
 - npm >= 10
 
 ### Commands
@@ -373,13 +379,16 @@ Distributes token budget proportionally across files, ensuring each file gets a 
 # Install dependencies from lockfile
 npm ci
 
+# Check types before building
+npm run typecheck
+
 # Build distributable artifacts
 npm run build
 
 # Run compiled CLI
 node dist/index.js --help
 
-# Lint
+# Lint with Oxlint
 npm run lint
 npm run lint:fix
 
@@ -389,6 +398,12 @@ npm run format:check
 
 # Run tests
 npm test
+
+# Run the low-threshold dependency security audit
+npm audit --audit-level=low
+
+# Validate packed npm installs across global, npx, and local dependency modes
+npm run smoke:install-matrix
 ```
 
 ### Project Structure
@@ -418,10 +433,11 @@ zencommit/
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/my-feature`
-3. Make your changes following the coding style
-4. Run linting and tests: `npm run lint && npm test`
-5. Commit using conventional commits: `feat: add my feature`
-6. Push and open a pull request
+3. Make your changes following the TypeScript/Prettier style
+4. Run quality gates: `npm run lint && npm run typecheck && npm test && npm audit --audit-level=low`
+5. For packaging-facing changes, also run `npm run smoke:install-matrix`
+6. Commit using conventional commits: `feat: add my feature`
+7. Push and open a pull request
 
 ## License
 

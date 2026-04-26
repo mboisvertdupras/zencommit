@@ -80,6 +80,14 @@ function parsePayloadLines(payload: string) {
   );
 }
 
+function parseEmittedPayload(emittedArgs: string[]) {
+  const payload = emittedArgs[2];
+  if (!payload) {
+    throw new Error('Expected ralph payload argument');
+  }
+  return parsePayloadLines(payload);
+}
+
 function expectThresholdEvidence(payload: Map<string, string>) {
   expect(payload.get('threshold.quality.tests')).toBe('pass');
   expect(payload.get('threshold.quality.coverage')).toBe('>=80%');
@@ -211,7 +219,7 @@ describe('emit-verify-passed helper', () => {
 
     expect(emittedArgs.slice(0, 2)).toEqual(['emit', 'verify.passed']);
 
-    const payload = parsePayloadLines(emittedArgs[2]);
+    const payload = parseEmittedPayload(emittedArgs);
     expect(payload.get('task_id')).toBe('task-xyz');
     expect(payload.get('commit')).toBe('abc1234');
     expect(payload.get('summary')).toBe('Verifier checks passed');
@@ -249,7 +257,7 @@ describe('emit-verify-passed helper', () => {
     expect(result.status).toBe(0);
     expect(emittedArgs.slice(0, 2)).toEqual(['emit', 'verify.passed']);
 
-    const payload = parsePayloadLines(emittedArgs[2]);
+    const payload = parseEmittedPayload(emittedArgs);
     expect(payload.get('task_id')).toBe('task-npm');
     expect(payload.get('commit')).toBe('abc1234');
     expect(payload.get('summary')).toBe('Verifier checks passed');
@@ -275,7 +283,7 @@ describe('emit-verify-passed helper', () => {
     expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
 
-    const payload = parsePayloadLines(emittedArgs[2]);
+    const payload = parseEmittedPayload(emittedArgs);
     expect(payload.get('task_id')).toBe('task-xyz');
     expect(payload.get('commit')).toBe('abc1234');
     expect(payload.get('summary')).toBe('Verifier checks passed');

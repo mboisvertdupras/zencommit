@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-type CliResult = {
-  code: number | null;
-  stdout: string;
-  stderr: string;
-};
+import {
+  createTempRepo,
+  normalizeOutput,
+  runCli,
+  toNormalizedLines,
+  workspaceRoot,
+} from '../helpers/cli.ts';
 
 type ParityBaselineFixture = {
   help: {
@@ -36,47 +36,6 @@ type ParityBaselineFixture = {
   };
 };
 
-const normalizeOutput = (text: string): string => text.replace(/\r\n/g, '\n');
-
-const runCli = (
-  args: [string, ...string[]],
-  cwd: string,
-  env: Record<string, string>,
-): Promise<CliResult> =>
-  new Promise((resolve) => {
-    const proc = spawn(args[0], args.slice(1), {
-      cwd,
-      env: { ...process.env, ...env },
-    });
-    let stdout = '';
-    let stderr = '';
-    proc.stdout?.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-    proc.stderr?.on('data', (data: Buffer) => {
-      stderr += data.toString();
-    });
-    proc.on('close', (code) => resolve({ code, stdout, stderr }));
-  });
-
-const createTempRepo = async (withStagedChange: boolean): Promise<string> => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'zencommit-parity-'));
-  execFileSync('git', ['init'], { cwd: dir, stdio: 'ignore' });
-
-  if (withStagedChange) {
-    await fs.writeFile(path.join(dir, 'file.txt'), 'hello\n', 'utf8');
-    execFileSync('git', ['add', '-A'], { cwd: dir, stdio: 'ignore' });
-  }
-
-  return dir;
-};
-
-const toNormalizedLines = (text: string): string[] =>
-  normalizeOutput(text)
-    .split('\n')
-    .map((line) => line.trim().replace(/\s+/g, ' '))
-    .filter((line) => line.length > 0);
-
 const loadBaselineFixture = async (): Promise<ParityBaselineFixture> => {
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const fixturePath = path.join(__dirname, '..', 'fixtures', 'parity-baseline.json');
@@ -87,11 +46,8 @@ const loadBaselineFixture = async (): Promise<ParityBaselineFixture> => {
 describe('parity baseline fixtures', () => {
   it('captures top-level command and option surface from --help', async () => {
     const fixture = await loadBaselineFixture();
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const workspaceRoot = path.join(__dirname, '..', '..');
-    const entry = path.join(workspaceRoot, 'dist', 'index.js');
 
-    const result = await runCli([process.execPath, entry, '--help'], workspaceRoot, {});
+    const result = await runCli(['--help']);
 
     expect(result.code).toBe(0);
     const lines = toNormalizedLines(result.stdout);
@@ -109,13 +65,13 @@ describe('parity baseline fixtures', () => {
 
   it('captures deterministic dry-run output shape', async () => {
     const fixture = await loadBaselineFixture();
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const workspaceRoot = path.join(__dirname, '..', '..');
-    const entry = path.join(workspaceRoot, 'dist', 'index.js');
-    const repo = await createTempRepo(true);
+    const repo = await createTempRepo({ prefix: 'zencommit-parity-', withStagedChange: true });
 
-    const result = await runCli([process.execPath, entry, '--dry-run', '--yes'], repo, {
-      ZENCOMMIT_MOCK_RESPONSE: JSON.stringify(fixture.dryRun.mockResponse),
+    const result = await runCli(['--dry-run', '--yes'], {
+      cwd: repo,
+      env: {
+        ZENCOMMIT_MOCK_RESPONSE: JSON.stringify(fixture.dryRun.mockResponse),
+      },
     });
 
     expect(result.code).toBe(0);
@@ -125,28 +81,30 @@ describe('parity baseline fixtures', () => {
 
   it('captures key exit-code mappings for config, git/no-diff, and model errors', async () => {
     const fixture = await loadBaselineFixture();
-    const __dirname = path.dirname(fileURLToPath(import.meta.url));
-    const workspaceRoot = path.join(__dirname, '..', '..');
-    const entry = path.join(workspaceRoot, 'dist', 'index.js');
 
-    const configResult = await runCli(
-      [process.execPath, entry, 'config', 'validate'],
-      workspaceRoot,
-      {
+    const configResult = await runCli(['config', 'validate'], {
+      cwd: workspaceRoot,
+      env: {
         ZENCOMMIT_CONFIG_CONTENT: '{',
       },
-    );
+    });
     expect(configResult.code).toBe(fixture.exitCodes.configError);
     expect(configResult.stderr).toContain(fixture.stderrIncludes.configError);
 
-    const noDiffRepo = await createTempRepo(false);
-    const noDiffResult = await runCli([process.execPath, entry, '--dry-run', '--yes'], noDiffRepo, {
-      ZENCOMMIT_MOCK_RESPONSE: JSON.stringify(fixture.dryRun.mockResponse),
+    const noDiffRepo = await createTempRepo({ prefix: 'zencommit-parity-' });
+    const noDiffResult = await runCli(['--dry-run', '--yes'], {
+      cwd: noDiffRepo,
+      env: {
+        ZENCOMMIT_MOCK_RESPONSE: JSON.stringify(fixture.dryRun.mockResponse),
+      },
     });
     expect(noDiffResult.code).toBe(fixture.exitCodes.noDiff);
     expect(noDiffResult.stderr).toContain(fixture.stderrIncludes.noDiff);
 
-    const modelErrorRepo = await createTempRepo(true);
+    const modelErrorRepo = await createTempRepo({
+      prefix: 'zencommit-parity-',
+      withStagedChange: true,
+    });
     await fs.writeFile(path.join(modelErrorRepo, 'models.metadata.json'), '{}\n', 'utf8');
     const modelErrorConfig = JSON.stringify({
       metadata: {
@@ -160,10 +118,12 @@ describe('parity baseline fixtures', () => {
     });
 
     const modelErrorResult = await runCli(
-      [process.execPath, entry, '--dry-run', '--yes', '--model', 'unsupported-provider/mock-model'],
-      modelErrorRepo,
+      ['--dry-run', '--yes', '--model', 'unsupported-provider/mock-model'],
       {
-        ZENCOMMIT_CONFIG_CONTENT: modelErrorConfig,
+        cwd: modelErrorRepo,
+        env: {
+          ZENCOMMIT_CONFIG_CONTENT: modelErrorConfig,
+        },
       },
     );
 

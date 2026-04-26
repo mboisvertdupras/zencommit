@@ -1,4 +1,5 @@
-import { ExecError, exec } from '../util/exec.js';
+import { ExecError, exec, sanitizeCommandOutput } from '../util/exec.js';
+import type { ExecOptions, ExecResult } from '../util/exec.js';
 
 export interface ProviderAuthConfig {
   id: string;
@@ -161,6 +162,8 @@ export interface SecretStore {
   delete(envKey: string): Promise<void>;
 }
 
+export type ExecRunner = (command: string[], options?: ExecOptions) => Promise<ExecResult>;
+
 export class SecretStoreUnavailableError extends Error {
   constructor(message: string) {
     super(message);
@@ -184,6 +187,41 @@ const isMissingSecretMessage = (text: string): boolean => {
   );
 };
 
+const keychainOperationGuidance = (envKey: string): string =>
+  `Use the ${envKey} environment variable or run \`zencommit auth login\`.`;
+
+const keychainFailureDetails = (stderr: string): string => {
+  const details = sanitizeCommandOutput(stderr);
+  return details ? ` Details: ${details}` : '';
+};
+
+const keychainFailureMessage = (action: string, envKey: string, stderr: string): string =>
+  `Failed to ${action} ${envKey} in macOS Keychain. ${keychainOperationGuidance(envKey)}${keychainFailureDetails(stderr)}`;
+
+const execErrorDetails = (error: ExecError): string =>
+  error.safeStderr || error.safeStdout || error.message;
+
+const toKeychainFailureError = (action: string, envKey: string, error: unknown): Error => {
+  if (error instanceof ExecError) {
+    return new Error(keychainFailureMessage(action, envKey, execErrorDetails(error)));
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(keychainFailureMessage(action, envKey, message));
+};
+
+const toKeychainResultFailureError = (
+  action: string,
+  envKey: string,
+  result: { stderr: string; exitCode: number },
+): Error =>
+  new Error(
+    keychainFailureMessage(
+      action,
+      envKey,
+      result.stderr.trim() || `security exited ${result.exitCode}`,
+    ),
+  );
+
 const toUnavailableError = (error: unknown): SecretStoreUnavailableError | null => {
   if (error instanceof SecretStoreUnavailableError) {
     return error;
@@ -200,8 +238,11 @@ const toUnavailableError = (error: unknown): SecretStoreUnavailableError | null 
   return null;
 };
 
-class MacOsKeychainSecretStore implements SecretStore {
-  constructor(private readonly service: string) {}
+export class MacOsKeychainSecretStore implements SecretStore {
+  constructor(
+    private readonly service: string,
+    private readonly runner: ExecRunner = exec,
+  ) {}
 
   private assertSupportedPlatform(): void {
     if (process.platform !== 'darwin') {
@@ -211,7 +252,7 @@ class MacOsKeychainSecretStore implements SecretStore {
 
   async set(envKey: string, value: string): Promise<void> {
     this.assertSupportedPlatform();
-    await exec([
+    const command = [
       'security',
       'add-generic-password',
       '-U',
@@ -221,24 +262,34 @@ class MacOsKeychainSecretStore implements SecretStore {
       envKey,
       '-w',
       value,
-    ]);
+    ];
+    try {
+      await this.runner(command, {
+        operation: `macOS Keychain store ${envKey}`,
+        redactedArgs: [command.length - 1],
+      });
+    } catch (error) {
+      throw toKeychainFailureError('store', envKey, error);
+    }
   }
 
   async get(envKey: string): Promise<string | null> {
     this.assertSupportedPlatform();
 
-    const result = await exec(
+    const result = await this.runner(
       ['security', 'find-generic-password', '-s', this.service, '-a', envKey, '-w'],
-      { allowFailure: true },
+      {
+        allowFailure: true,
+        operation: `macOS Keychain read ${envKey}`,
+        redactStdout: true,
+      },
     );
 
     if (result.exitCode !== 0) {
       if (isMissingSecretMessage(result.stderr)) {
         return null;
       }
-      throw new Error(
-        `Failed to read ${envKey} from secure store: ${result.stderr.trim() || `exit ${result.exitCode}`}`,
-      );
+      throw toKeychainResultFailureError('read', envKey, result);
     }
 
     const value = result.stdout.replace(/[\r\n]+$/g, '');
@@ -248,15 +299,16 @@ class MacOsKeychainSecretStore implements SecretStore {
   async delete(envKey: string): Promise<void> {
     this.assertSupportedPlatform();
 
-    const result = await exec(
+    const result = await this.runner(
       ['security', 'delete-generic-password', '-s', this.service, '-a', envKey],
-      { allowFailure: true },
+      {
+        allowFailure: true,
+        operation: `macOS Keychain delete ${envKey}`,
+      },
     );
 
     if (result.exitCode !== 0 && !isMissingSecretMessage(result.stderr)) {
-      throw new Error(
-        `Failed to remove ${envKey} from secure store: ${result.stderr.trim() || `exit ${result.exitCode}`}`,
-      );
+      throw toKeychainResultFailureError('remove', envKey, result);
     }
   }
 }

@@ -1,3 +1,9 @@
+export type DeepPartial<T> = T extends readonly unknown[]
+  ? T
+  : T extends object
+    ? { [K in keyof T]?: DeepPartial<T[K]> }
+    : T;
+
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   if (!value || typeof value !== 'object') {
     return false;
@@ -6,7 +12,7 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   return proto === Object.prototype || proto === null;
 };
 
-export const deepMerge = <T>(base: T, override: Partial<T>): T => {
+export const deepMerge = <T>(base: T, override: DeepPartial<T>): T => {
   if (Array.isArray(base) || Array.isArray(override)) {
     return (override ?? base) as T;
   }

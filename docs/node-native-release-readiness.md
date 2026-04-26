@@ -1,146 +1,58 @@
-# Node/npm Migration Final Certification
+# Node/npm Release Readiness Notes
 
-This checklist records final sign-off evidence for the Bun-to-Node/npm migration.
+This note records the current M002 readiness posture for the Node/npm-native `zencommit` package. It replaces the old 0.1.5 migration snapshot with a living checklist for maintainers and records the fresh S07 all-gates certification for package version `0.2.5`.
 
-## Validation Stack (Step 10)
+## Current Runtime and Package Contract
 
-All required release-readiness gates were rerun on Node/npm and passed.
+- Package version: `0.2.5`.
+- Runtime floor: Node.js `>=22.14.0`.
+- Package entrypoints: `bin/zencommit.js` launches compiled ESM from `dist/index.js`.
+- Install modes expected to work: global install, `npx`, and local dependency execution through the packed install smoke matrix.
+- Secrets remain outside configuration: provider credentials are loaded from the secure-store adapter or environment variables and must never be committed to `zencommit.json`, docs fixtures, or tests.
 
-- `npm ci` (clean install)
+## Current CLI Surface to Keep in Parity
+
+The built CLI help is the source of truth for user-facing docs. Release notes and README examples should stay aligned with these command groups and options:
+
+- Top-level: `zencommit --help`, `zencommit --version`, `zencommit --verbose`, `zencommit --yes`, `zencommit --dry-run`, `zencommit --all`, `zencommit --unstaged`, `zencommit --commit`, `zencommit --push`, `zencommit --model`, `zencommit --format`, `zencommit --lang`, and `zencommit --no-body`.
+- Auth: `zencommit auth`, `zencommit auth login --env-key OPENAI_API_KEY --token <token>`, `zencommit auth logout --env-key OPENAI_API_KEY`, and `zencommit auth status`.
+- Config: `zencommit config`, `zencommit config init`, `zencommit config print`, and `zencommit config validate`.
+- Models: `zencommit models`, `zencommit models search [query] --max-items 10`, and `zencommit models info <modelId>`.
+
+## S07 Final Certification Stack
+
+S07 reran these gates from the package checkout for version `0.2.5`; every command below exited 0 in the final matrix:
+
+- `npm run typecheck`
+- `npm run build`
+- `npm test`
 - `npm run lint`
 - `npm run format:check`
-- `npm test` (includes `tests/integration/parity-baseline.test.ts`)
-- `npm run build`
-- `npm run guard:no-bun-runtime`
-- `npm run smoke:install-matrix` (global, `npx`, local)
-- `npm audit --omit=dev`
+- `npm audit --audit-level=low`
+- `npm outdated --json`
+- `node scripts/audit-baseline.mjs --check`
+- `npm run smoke:install-matrix` (global, `npx`, and local dependency modes)
+
+Additional release-maintainer probes remain useful before publishing from a fresh clone, but they are not separate open S07 blockers once the command matrix above is green:
+
+- `npm ci`
+- `npm test -- tests/integration/docs-parity.test.ts`
 - `node dist/index.js --help`
-- `npm exec zencommit -- --help`
-- `npm pack --json` (package artifact verification)
+- `node dist/index.js auth --help`
+- `node dist/index.js config --help`
+- `node dist/index.js models --help`
+- `npm pack --json`
 
-## Latest Revalidation Snapshot (2026-02-17 21:04 EST)
+## M002 Evidence Covered
 
-- `npm ci`: pass.
-- `npm run lint`: pass.
-- `npm run format:check`: pass.
-- `npm test`: pass (10 files, 32 tests).
-- `npm run build`: pass.
-- `npm run guard:no-bun-runtime`: pass (no Bun runtime references detected).
-- `npm run smoke:install-matrix`: pass (`global`, `npx`, `local`).
-- `npm audit --omit=dev`: pass (0 vulnerabilities).
-- `node dist/index.js --help`: pass (expected command/flag surface).
-- `npm exec zencommit -- --help`: pass (expected command/flag surface).
-- `npm pack --json`: pass (`zencommit-0.1.5.tgz`, `shasum` `92f73871a1b75bd884b969a42adb6ee2a1fa8df8`, `entryCount` 67).
-
-## Acceptance Criteria Mapping
-
-1. Given a clean checkout on latest Node LTS, when `npm ci` runs, then install succeeds without requiring Bun.
-   Evidence: `npm ci` completed successfully.
-2. Given the migrated codebase, when searching for active runtime/tooling usage, then no Bun API/runtime references remain in production paths.
-   Evidence: `npm run guard:no-bun-runtime` passed; no runtime Bun API violations reported.
-3. Given `zencommit --help`, when run after migration, then command/flag surface matches pre-migration behavior.
-   Evidence: help output from `node dist/index.js --help` includes expected command groups and options; parity fixture tests passed in `tests/integration/parity-baseline.test.ts`.
-4. Given auth login/logout/status flows, when executed, then secrets are stored/retrieved/deleted via the new secure adapter and full secrets are never printed.
-   Evidence: unit coverage for secret adapter behavior in `tests/unit/secrets.test.ts` passed.
-5. Given config sources (global/custom/project/inline), when resolved, then precedence and deep-merge semantics remain unchanged.
-   Evidence: `src/config/load.test.ts` and `src/config/merge.test.ts` passed.
-6. Given deterministic mock LLM output, when `zencommit --dry-run --yes` runs, then output and exit code match parity expectations.
-   Evidence: `tests/integration/default.test.ts` and `tests/integration/parity-baseline.test.ts` passed.
-7. Given a packed npm artifact, when installed/executed via global install, `npx`, and local dependency modes, then all three modes run successfully with expected output/exit behavior.
-   Evidence: `npm run smoke:install-matrix` passed for `global`, `npx`, and `local` modes against packed tarball.
-8. Given CI validation, when lint/format/tests/build/package checks run under npm workflows, then all gates pass.
-   Evidence: lint, format, test, build, smoke matrix, and `npm pack --json` checks all passed under npm commands.
-9. Given dependency or lock updates, when lockfile changes occur, then `package-lock.json` changes are npm-generated only.
-   Evidence: lockfile policy remains npm-generated (`package-lock.json` present; Bun lockfile absent).
-
-## Packaging and Runtime Asset Confirmation
-
-- `npm pack --json` includes `bin/zencommit.js` and compiled runtime in `dist/`.
-- Prompt/template runtime assets are present in package payload under `dist/llm/prompts/*.md`.
-
-## Verifier Quality Payload Contract
-
-Verifier handoffs for this migration must use the parser-compatible plain-text payload format consumed by `ralph` (line-based `key: value` entries, not JSON objects).
-
-Required quality dimensions (all six are mandatory in every `verify.passed` payload):
-
-- `quality.tests: <pass|fail>`
-- `quality.coverage: <number>%`
-- `quality.lint: <pass|fail>`
-- `quality.audit: <pass|fail>`
-- `quality.mutation: <number>%`
-- `quality.complexity: <number>`
-
-Required threshold/evidence context (paired lines for each dimension):
-
-- `threshold.quality.tests: <threshold>`
-- `evidence.quality.tests: <status + emitted value>`
-- `threshold.quality.coverage: <threshold>`
-- `evidence.quality.coverage: <status + emitted value>`
-- `threshold.quality.lint: <threshold>`
-- `evidence.quality.lint: <status + emitted value>`
-- `threshold.quality.audit: <threshold>`
-- `evidence.quality.audit: <status + emitted value>`
-- `threshold.quality.mutation: <threshold>`
-- `evidence.quality.mutation: <status + emitted value>`
-- `threshold.quality.complexity: <threshold>`
-- `evidence.quality.complexity: <status + emitted value>`
-
-Canonical payload example (line-based parser contract):
-
-```text
-task_id: task-1771373673-d60c
-commit: 9e6ebd6
-summary: Verifier quality payload completeness restored for orchestration handoff.
-quality.tests: pass
-quality.coverage: 80%
-quality.lint: pass
-quality.audit: pass
-quality.mutation: 70%
-quality.complexity: 10
-threshold.quality.tests: pass
-evidence.quality.tests: input_status=pass; emitted=pass
-threshold.quality.coverage: >=80%
-evidence.quality.coverage: input_status=pass; emitted=80%
-threshold.quality.lint: pass
-evidence.quality.lint: input_status=pass; emitted=pass
-threshold.quality.audit: pass
-evidence.quality.audit: input_status=pass; emitted=pass
-threshold.quality.mutation: >=70%
-evidence.quality.mutation: input_status=pass; emitted=70%
-threshold.quality.complexity: <=10
-evidence.quality.complexity: input_status=pass; emitted=10
-```
-
-Allowed helper input status values: `pass`, `fail`, `fail_known_preexisting`, `not_configured`.
-
-## Verifier-Ready Evidence (task-1771373673-d60c)
-
-The following payload is the required `verify.passed` shape for this migration and includes every mandatory quality, threshold, and evidence line.
-
-```text
-task_id: task-1771373673-d60c
-summary: Verifier quality payload completeness restored for orchestration handoff.
-quality.tests: pass
-quality.coverage: 80%
-quality.lint: pass
-quality.audit: pass
-quality.mutation: 70%
-quality.complexity: 10
-threshold.quality.tests: pass
-evidence.quality.tests: input_status=pass; emitted=pass
-threshold.quality.coverage: >=80%
-evidence.quality.coverage: input_status=not_configured; emitted=80%
-threshold.quality.lint: pass
-evidence.quality.lint: input_status=pass; emitted=pass
-threshold.quality.audit: pass
-evidence.quality.audit: input_status=pass; emitted=pass
-threshold.quality.mutation: >=70%
-evidence.quality.mutation: input_status=not_configured; emitted=70%
-threshold.quality.complexity: <=10
-evidence.quality.complexity: input_status=not_configured; emitted=10
-```
+- S05 behavior coverage restored parity-sensitive CLI behavior, including exit codes `0`, `2`, `3`, and `4`, configuration precedence, auth fallback behavior, and dry-run outputs.
+- S06 docs parity coverage verifies the built help surface and documentation claims for the command groups and options above.
+- S07 final-gate coverage passed `npm run typecheck`, `npm run build`, `npm test`, `npm run lint`, `npm run format:check`, `npm audit --audit-level=low`, `npm outdated --json`, `node scripts/audit-baseline.mjs --check`, and `npm run smoke:install-matrix` after refreshing direct dependency drift.
+- Dependency/security posture uses the low-threshold `npm audit --audit-level=low` command so low-severity advisories are visible rather than hidden by `--omit=dev`; the S07 run reported 0 vulnerabilities.
+- Direct dependency drift is closed for this evidence set: `npm outdated --json` returned `{}` after the lockfile refreshed `@openrouter/ai-sdk-provider` to `2.8.1` within the existing package range.
+- Linting is the Oxlint surface; do not document ESLint as the active maintainer gate.
+- Packed install smoke passed for global, `npx`, and local dependency execution. The generated `zencommit-0.2.5.tgz` artifact was removed after the smoke run.
 
 ## Release Readiness Outcome
 
-Release candidate is certified for npm-native publish with Node LTS runtime parity requirements satisfied.
+M002 docs, behavior, dependency posture, build output, and packed install surfaces are certified for the S07 final integrated gate on package version `0.2.5`. Future release tasks should rerun the same command matrix after any source, dependency, package metadata, or documentation changes before publishing a new artifact.

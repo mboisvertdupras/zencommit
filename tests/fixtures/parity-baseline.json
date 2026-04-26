@@ -29,7 +29,7 @@
     "modelError": 4
   },
   "stderrIncludes": {
-    "configError": "Invalid JSON in ZENCOMMIT_CONFIG_CONTENT:",
+    "configError": "Invalid JSON in inline config from ZENCOMMIT_CONFIG_CONTENT:",
     "noDiff": "No diff to summarize.",
     "modelError": "Unsupported model provider: unsupported-provider"
   }

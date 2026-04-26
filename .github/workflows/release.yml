@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.14.0'
           cache: 'npm'
       - run: npm ci
       - name: Verify tag matches package.json version
@@ -27,7 +27,8 @@ jobs:
           fi
       - run: npm run lint
       - run: npm run format:check
-      - run: npm test
+      - run: npm run build
+      - run: npm run test:run
       - run: npm run smoke:install-matrix
       - uses: actions/upload-artifact@v4
         with:
@@ -67,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '22.14.0'
           cache: 'npm'
       # Keep npm current so trusted publishing and provenance flows stay compatible.
       - run: npm install -g npm@latest

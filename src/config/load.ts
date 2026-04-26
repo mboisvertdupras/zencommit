@@ -1,8 +1,9 @@
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { deepMerge } from './merge.js';
+import { deepMerge, type DeepPartial } from './merge.js';
 import type { ResolvedConfig } from './types.js';
 import { defaultConfig } from './types.js';
-import { getConfigRoot, readJsonFile, resolvePath } from '../util/fs.js';
+import { getConfigRoot, resolvePath } from '../util/fs.js';
 
 export type ConfigSourceName = 'global' | 'custom' | 'project' | 'inline';
 
@@ -24,19 +25,66 @@ export class ConfigLoadError extends Error {
   }
 }
 
-const readConfigFile = async (
-  filePath: string,
+const describeConfigSource = (source: ConfigSourceName, filePath?: string): string => {
+  if (source === 'inline') {
+    return 'inline config from ZENCOMMIT_CONFIG_CONTENT';
+  }
+  return `${source} config at ${filePath ?? 'unknown path'}`;
+};
+
+const isConfigObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const parseConfigContent = (
+  content: string,
   source: ConfigSourceName,
-): Promise<Record<string, unknown> | null> => {
+  filePath?: string,
+): Record<string, unknown> => {
+  const sourceDescription = describeConfigSource(source, filePath);
+  let parsed: unknown;
+
   try {
-    return await readJsonFile<Record<string, unknown>>(filePath);
+    parsed = JSON.parse(content) as unknown;
   } catch (error) {
+    const prefix = source === 'inline' ? 'Invalid JSON in' : 'Failed to parse';
     throw new ConfigLoadError(
-      `Failed to parse ${source} config at ${filePath}: ${(error as Error).message}`,
+      `${prefix} ${sourceDescription}: ${(error as Error).message}`,
       source,
       filePath,
     );
   }
+
+  if (!isConfigObject(parsed)) {
+    throw new ConfigLoadError(
+      `Invalid ${sourceDescription}: expected a JSON object`,
+      source,
+      filePath,
+    );
+  }
+
+  return parsed;
+};
+
+const readConfigFile = async (
+  filePath: string,
+  source: Exclude<ConfigSourceName, 'inline'>,
+): Promise<Record<string, unknown> | null> => {
+  let content: string;
+  try {
+    content = await fs.readFile(filePath, 'utf8');
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') {
+      return null;
+    }
+    throw new ConfigLoadError(
+      `Failed to read ${describeConfigSource(source, filePath)}: ${nodeError.message}`,
+      source,
+      filePath,
+    );
+  }
+
+  return parseConfigContent(content, source, filePath);
 };
 
 export const getGlobalConfigPath = (): string =>
@@ -77,15 +125,7 @@ export const loadConfigSources = async (repoRoot: string | null): Promise<Config
 
   const inlineContent = process.env.ZENCOMMIT_CONFIG_CONTENT;
   if (inlineContent) {
-    try {
-      const inlineConfig = JSON.parse(inlineContent) as Record<string, unknown>;
-      sources.push({ name: 'inline', data: inlineConfig });
-    } catch (error) {
-      throw new ConfigLoadError(
-        `Invalid JSON in ZENCOMMIT_CONFIG_CONTENT: ${(error as Error).message}`,
-        'inline',
-      );
-    }
+    sources.push({ name: 'inline', data: parseConfigContent(inlineContent, 'inline') });
   }
 
   return sources;
@@ -93,8 +133,9 @@ export const loadConfigSources = async (repoRoot: string | null): Promise<Config
 
 export const resolveConfig = async (repoRoot: string | null): Promise<ResolvedConfig> => {
   const sources = await loadConfigSources(repoRoot);
-  return sources.reduce(
-    (config, source) => deepMerge(config, source.data as Partial<ResolvedConfig>),
+  return sources.reduce<ResolvedConfig>(
+    (config, source) =>
+      deepMerge<ResolvedConfig>(config, source.data as DeepPartial<ResolvedConfig>),
     defaultConfig,
   );
 };
@@ -111,7 +152,7 @@ export const resolveConfigWithSources = async (
     for (const key of Object.keys(data)) {
       sourceMap[key] = source.name;
     }
-    config = deepMerge(config, data as Partial<ResolvedConfig>);
+    config = deepMerge<ResolvedConfig>(config, data as DeepPartial<ResolvedConfig>);
   }
 
   return { config, sourceMap };

@@ -13,9 +13,9 @@ export const commitMessage = async (
   if (extraArgs.length > 0) {
     args.push(...extraArgs);
   }
-  await exec(args, { cwd });
+  await exec(args, { cwd, operation: 'git commit' });
 };
 
 export const pushChanges = async (cwd?: string): Promise<void> => {
-  await exec(['git', 'push'], { cwd });
+  await exec(['git', 'push'], { cwd, operation: 'git push' });
 };

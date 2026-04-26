@@ -1,12 +1,15 @@
 import { generateObject, generateText, jsonSchema } from 'ai';
 import { resolveProviderAuth, resolveRuntimeSecrets } from '../auth/secrets.js';
 import { getVerbosity, logVerbose } from '../util/logger.js';
+import {
+  normalizeCommitMessageField,
+  parseCommitMessageOutput,
+  validateCommitMessageOutput,
+  type CommitMessage,
+} from './output.js';
 import { resolveLanguageModel } from './providers.js';
 
-export interface CommitMessage {
-  subject: string;
-  body: string;
-}
+export type { CommitMessage } from './output.js';
 
 export interface GenerateInput {
   modelId: string;
@@ -37,6 +40,8 @@ const COMMIT_SCHEMA = jsonSchema<CommitMessage>({
   additionalProperties: false,
 });
 
+const MODEL_TIMEOUT_MESSAGE = 'Model call timed out';
+
 const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     return promise;
@@ -44,12 +49,22 @@ const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T
   return await Promise.race([
     promise,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Model call timed out')), timeoutMs),
+      setTimeout(() => reject(new Error(MODEL_TIMEOUT_MESSAGE)), timeoutMs),
     ),
   ]);
 };
 
-const normalizeOutput = (value: string): string => value.replace(/\r\n/g, '\n').trim();
+const isModelTimeoutError = (error: unknown): boolean =>
+  error instanceof Error && error.message === MODEL_TIMEOUT_MESSAGE;
+
+const isProviderAuthError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return /api key|auth(?:entication|orization)?|unauthori[sz]ed|forbidden|credential/i.test(
+    error.message,
+  );
+};
 
 const resolveModel = (modelId: string, input: GenerateInput) =>
   resolveLanguageModel(modelId, { openaiCompatible: input.openaiCompatible });
@@ -69,7 +84,9 @@ const ensureAuth = async (modelId: string): Promise<void> => {
   }
   if (auth.required && foundKeys.length === 0) {
     const primary = auth.primaryEnvKey ?? auth.envKeys[0] ?? auth.id;
-    throw new Error(`Missing API key for ${primary}`);
+    throw new Error(
+      `Missing API key for ${primary}. Set ${primary} or run \`zencommit auth login\`.`,
+    );
   }
 };
 
@@ -93,15 +110,15 @@ const callModelOnce = async (
           { role: 'user', content: userPrompt },
         ],
         temperature: input.temperature,
-        maxTokens: input.maxOutputTokens,
+        maxOutputTokens: input.maxOutputTokens,
       }),
       input.timeoutMs,
     );
-    return {
-      subject: normalizeOutput(result.object.subject ?? ''),
-      body: normalizeOutput(result.object.body ?? ''),
-    };
-  } catch {
+    return validateCommitMessageOutput(result.object, 'structured output');
+  } catch (error) {
+    if (isModelTimeoutError(error) || isProviderAuthError(error)) {
+      throw error;
+    }
     if (getVerbosity() >= 2) {
       logVerbose(2, 'llm: structured output failed, falling back to text');
     }
@@ -113,18 +130,14 @@ const callModelOnce = async (
           { role: 'user', content: userPrompt },
         ],
         temperature: input.temperature,
-        maxTokens: input.maxOutputTokens,
+        maxOutputTokens: input.maxOutputTokens,
       }),
       input.timeoutMs,
     );
 
     const rawText = textResult.text ?? '';
     try {
-      const parsed = JSON.parse(rawText) as CommitMessage;
-      return {
-        subject: normalizeOutput(parsed.subject ?? ''),
-        body: normalizeOutput(parsed.body ?? ''),
-      };
+      return parseCommitMessageOutput(rawText, 'text fallback');
     } catch {
       if (getVerbosity() >= 2) {
         logVerbose(2, 'llm: JSON parse failed, attempting repair');
@@ -138,15 +151,11 @@ const callModelOnce = async (
             { role: 'user', content: repairPrompt },
           ],
           temperature: input.temperature,
-          maxTokens: input.maxOutputTokens,
+          maxOutputTokens: input.maxOutputTokens,
         }),
         input.timeoutMs,
       );
-      const repaired = JSON.parse(repairResult.text ?? '') as CommitMessage;
-      return {
-        subject: normalizeOutput(repaired.subject ?? ''),
-        body: normalizeOutput(repaired.body ?? ''),
-      };
+      return parseCommitMessageOutput(repairResult.text ?? '', 'repair response');
     }
   }
 };
@@ -159,30 +168,29 @@ export const generateCommitMessage = async (
     if (getVerbosity() >= 2) {
       logVerbose(2, 'llm: using mock response');
     }
-    const mocked = JSON.parse(process.env.ZENCOMMIT_MOCK_RESPONSE) as CommitMessage;
-    return {
-      subject: normalizeOutput(mocked.subject ?? ''),
-      body: normalizeOutput(mocked.body ?? ''),
-    };
+    return parseCommitMessageOutput(process.env.ZENCOMMIT_MOCK_RESPONSE, 'mock response');
   }
 
   const callModel = deps.callModel ?? callModelOnce;
-  let result = await callModel(input);
+  let result = validateCommitMessageOutput(await callModel(input), 'model response');
 
   if (result.subject.length > input.maxSubjectChars) {
-    result = await callModel({
-      ...input,
-      user: `${input.user}\nKeep subject <= ${input.maxSubjectChars} chars.`,
-    });
+    result = validateCommitMessageOutput(
+      await callModel({
+        ...input,
+        user: `${input.user}\nKeep subject <= ${input.maxSubjectChars} chars.`,
+      }),
+      'model response',
+    );
   }
 
   if (result.subject.length > input.maxSubjectChars) {
     const trimmed = result.subject.slice(0, Math.max(0, input.maxSubjectChars - 3));
-    result.subject = `${trimmed}...`;
+    result = { ...result, subject: `${trimmed}...` };
   }
 
-  result.subject = normalizeOutput(result.subject);
-  result.body = normalizeOutput(result.body ?? '');
-
-  return result;
+  return {
+    subject: normalizeCommitMessageField(result.subject),
+    body: normalizeCommitMessageField(result.body),
+  };
 };

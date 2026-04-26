@@ -37,11 +37,24 @@ export const createLocalProvider = (
     }
     const resolvedPath = resolvePath(config.providers.local.path, repoRoot ?? process.cwd());
     logVerbose(1, `metadata: loading local file ${resolvedPath}`);
-    const data = await readJsonFile<unknown>(resolvedPath);
+    let data: unknown;
+    try {
+      data = await readJsonFile<unknown>(resolvedPath);
+    } catch (error) {
+      throw new Error(
+        `Failed to parse local metadata file at ${resolvedPath}: ${(error as Error).message}`,
+      );
+    }
     if (!data) {
       throw new Error(`Local metadata file not found at ${resolvedPath}`);
     }
-    cachedModels = normalizeLocalData(data, 'local');
+    const models = normalizeLocalData(data, 'local');
+    if (models.length === 0) {
+      throw new Error(
+        `Local metadata file at ${resolvedPath} did not contain any usable model metadata`,
+      );
+    }
+    cachedModels = models;
     return cachedModels;
   };
 

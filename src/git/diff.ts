@@ -14,6 +14,9 @@ const diffBaseArgs = (mode: DiffMode): string[] => {
   return ['diff'];
 };
 
+const diffOperation = (mode: DiffMode, suffix?: string): string =>
+  suffix ? `git diff (${mode}) ${suffix}` : `git diff (${mode})`;
+
 export const getDiff = async ({ mode, cwd, compact }: DiffOptions): Promise<string> => {
   const args = diffBaseArgs(mode);
   if (compact) {
@@ -27,14 +30,14 @@ export const getDiff = async ({ mode, cwd, compact }: DiffOptions): Promise<stri
   } else {
     args.push('--no-color');
   }
-  const result = await exec(['git', ...args], { cwd });
+  const result = await exec(['git', ...args], { cwd, operation: diffOperation(mode) });
   return result.stdout;
 };
 
 export const getFileList = async ({ mode, cwd }: DiffOptions): Promise<string[]> => {
   const args = diffBaseArgs(mode);
   args.push('--name-only');
-  const result = await exec(['git', ...args], { cwd });
+  const result = await exec(['git', ...args], { cwd, operation: diffOperation(mode, 'file list') });
   return result.stdout
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -62,8 +65,11 @@ const parseNumstat = (
 export const getFileSummary = async ({ mode, cwd }: DiffOptions): Promise<string> => {
   const baseArgs = diffBaseArgs(mode);
   const [nameStatus, numstat] = await Promise.all([
-    exec(['git', ...baseArgs, '--name-status'], { cwd }),
-    exec(['git', ...baseArgs, '--numstat'], { cwd }),
+    exec(['git', ...baseArgs, '--name-status'], {
+      cwd,
+      operation: diffOperation(mode, 'name status'),
+    }),
+    exec(['git', ...baseArgs, '--numstat'], { cwd, operation: diffOperation(mode, 'numstat') }),
   ]);
 
   const numstatMap = parseNumstat(numstat.stdout);
