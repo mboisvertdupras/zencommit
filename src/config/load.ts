@@ -14,10 +14,10 @@ export interface ConfigSource {
 }
 
 export class ConfigLoadError extends Error {
-  source: ConfigSourceName | 'inline' | 'unknown';
+  source: ConfigSourceName;
   path?: string;
 
-  constructor(message: string, source: ConfigSourceName | 'inline' | 'unknown', path?: string) {
+  constructor(message: string, source: ConfigSourceName, path?: string) {
     super(message);
     this.name = 'ConfigLoadError';
     this.source = source;

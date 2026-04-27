@@ -5,6 +5,11 @@ import { isCacheFresh, readCache, writeCache } from '../cache.js';
 import type { MetadataConfig } from '../../config/types.js';
 import { getVerbosity, logVerbose } from '../../util/logger.js';
 
+type ModelsDevMetadataProvider = MetadataProvider & {
+  list(): Promise<ModelMetadata[]>;
+  refresh(): Promise<void>;
+};
+
 const toNumberOrNull = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -99,7 +104,7 @@ const normalizeCacheData = (
   return models;
 };
 
-export const createModelsDevProvider = (config: MetadataConfig): MetadataProvider => {
+export const createModelsDevProvider = (config: MetadataConfig): ModelsDevMetadataProvider => {
   const cachePath = path.join(getCacheRoot(), 'zencommit', 'metadata', 'modelsdev.cache.json');
   let cachedModels: ModelMetadata[] | null = null;
 

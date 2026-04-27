@@ -109,9 +109,7 @@ describe('secrets adapter', () => {
       .map((call) => String(call[0]))
       .find((line) => line.startsWith('OPENAI_API_KEY:'));
 
-    expect(openaiLine).toBeDefined();
-    expect(openaiLine).toContain('stored (');
-    expect(openaiLine).toContain('1234');
+    expect(openaiLine).toMatch(/^OPENAI_API_KEY: stored \(.+1234\)$/);
     expect(openaiLine).not.toContain(token);
   });
 
@@ -198,7 +196,7 @@ describe('secrets adapter', () => {
     const store = new MacOsKeychainSecretStore('zencommit-test', runner);
 
     await expect(store.get('OPENAI_API_KEY')).resolves.toBeNull();
-    await expect(store.delete('OPENAI_API_KEY')).resolves.toBeUndefined();
+    await store.delete('OPENAI_API_KEY');
   });
 
   it('converts keychain failures into bounded secret-safe guidance', async () => {

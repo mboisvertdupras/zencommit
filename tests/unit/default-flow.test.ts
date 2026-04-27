@@ -115,7 +115,6 @@ describe('default command flow helpers', () => {
       'inline',
     );
     expect(classifyDefaultCommandError(configError)).toEqual({
-      boundary: 'config',
       exitCode: 2,
       message: 'Invalid inline config from ZENCOMMIT_CONFIG_CONTENT',
     });
@@ -131,13 +130,11 @@ describe('default command flow helpers', () => {
       },
     );
     expect(classifyDefaultCommandError(execError)).toEqual({
-      boundary: 'git',
       exitCode: 3,
       message: 'token=<redacted>',
     });
 
     expect(classifyDefaultCommandError(new Error('Missing API key for OPENAI_API_KEY'))).toEqual({
-      boundary: 'auth',
       exitCode: 2,
       message:
         'Missing API key for OPENAI_API_KEY\nRun `zencommit auth login` to store credentials.',
@@ -146,7 +143,6 @@ describe('default command flow helpers', () => {
     expect(
       classifyDefaultCommandError(new Error('Unsupported model provider: internal/mock')),
     ).toEqual({
-      boundary: 'model',
       exitCode: 4,
       message: 'Unsupported model provider: internal/mock',
     });

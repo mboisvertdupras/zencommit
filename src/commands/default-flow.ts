@@ -45,7 +45,6 @@ export interface CommitDecision {
 }
 
 export interface DefaultCommandErrorClassification {
-  boundary: 'config' | 'git' | 'auth' | 'model' | 'unknown';
   exitCode: 2 | 3 | 4;
   message: string;
 }
@@ -129,12 +128,11 @@ export const buildPromptInput = (
 
 export const classifyDefaultCommandError = (error: unknown): DefaultCommandErrorClassification => {
   if (error instanceof ConfigLoadError) {
-    return { boundary: 'config', exitCode: 2, message: error.message };
+    return { exitCode: 2, message: error.message };
   }
 
   if (error instanceof ExecError) {
     return {
-      boundary: 'git',
       exitCode: 3,
       message: error.safeStderr || error.message,
     };
@@ -143,7 +141,6 @@ export const classifyDefaultCommandError = (error: unknown): DefaultCommandError
   const message = error instanceof Error ? error.message : 'Unknown error.';
   if (/API key/i.test(message)) {
     return {
-      boundary: 'auth',
       exitCode: 2,
       message: `${message}\nRun \`zencommit auth login\` to store credentials.`,
     };
@@ -152,8 +149,8 @@ export const classifyDefaultCommandError = (error: unknown): DefaultCommandError
   if (
     /Unsupported model provider|Invalid commit message response|Model call timed out/i.test(message)
   ) {
-    return { boundary: 'model', exitCode: 4, message };
+    return { exitCode: 4, message };
   }
 
-  return { boundary: 'unknown', exitCode: 4, message };
+  return { exitCode: 4, message };
 };

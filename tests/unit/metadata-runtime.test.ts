@@ -79,7 +79,7 @@ describe('local metadata provider failure boundaries', () => {
         dir,
       );
 
-      const error = await expectMetadataError(provider.list?.() ?? Promise.resolve());
+      const error = await expectMetadataError(provider.list());
 
       expect(error.message).toContain(`Failed to parse local metadata file at ${metadataPath}`);
       expect(error.message).not.toContain('secret-model');
@@ -121,7 +121,7 @@ describe('models.dev metadata provider failure boundaries', () => {
         metadataConfig({ providers: { modelsdev: { url, cacheTtlHours: 24 } } }),
       );
 
-      const error = await expectMetadataError(provider.list?.() ?? Promise.resolve());
+      const error = await expectMetadataError(provider.list());
 
       expect(error.message).toContain(`Failed to parse models.dev response from ${url}`);
       expect(error.message).not.toContain('secret-model');

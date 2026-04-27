@@ -4,6 +4,8 @@ import { readJsonFile, resolvePath } from '../../util/fs.js';
 import { normalizeModelsDevData } from './modelsdev.js';
 import { logVerbose } from '../../util/logger.js';
 
+type LocalMetadataProvider = MetadataProvider & { list(): Promise<ModelMetadata[]> };
+
 const hasModelId = (entry: unknown): entry is Partial<ModelMetadata> & { id: string } =>
   !!entry && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string';
 
@@ -27,7 +29,7 @@ const normalizeLocalData = (data: unknown): ModelMetadata[] => {
 export const createLocalProvider = (
   config: MetadataConfig,
   repoRoot: string | null,
-): MetadataProvider => {
+): LocalMetadataProvider => {
   let cachedModels: ModelMetadata[] | null = null;
 
   const loadModels = async (): Promise<ModelMetadata[]> => {
