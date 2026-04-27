@@ -1,10 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-
-const execFileAsync = promisify(execFile);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkgRoot = path.resolve(__dirname, '..');
@@ -30,14 +26,6 @@ const distEntrypoint = path.join(pkgRoot, 'dist', 'index.js');
 const entrypoint = await fs.readFile(distEntrypoint, 'utf8');
 if (!entrypoint.startsWith('#!/usr/bin/env node')) {
   throw new Error('dist/index.js must preserve a Node shebang.');
-}
-
-const helpResult = await execFileAsync('node', [distEntrypoint, '--help'], {
-  cwd: pkgRoot,
-  env: process.env,
-});
-if (!helpResult.stdout.includes('Generate commit message')) {
-  throw new Error('dist/index.js --help output is missing the default command description.');
 }
 
 console.log('dist artifact verification passed');

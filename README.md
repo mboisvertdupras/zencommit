@@ -145,24 +145,28 @@ zencommit auth status
 
 ### Supported Environment Variables
 
-| Provider    | Environment Variable                               |
-| ----------- | -------------------------------------------------- |
-| OpenAI      | `OPENAI_API_KEY`                                   |
-| Anthropic   | `ANTHROPIC_API_KEY`                                |
-| Google      | `GOOGLE_GENERATIVE_AI_API_KEY` or `GEMINI_API_KEY` |
-| Azure       | `AZURE_API_KEY`                                    |
-| AWS Bedrock | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`       |
-| Groq        | `GROQ_API_KEY`                                     |
-| Mistral     | `MISTRAL_API_KEY`                                  |
-| xAI         | `XAI_API_KEY`                                      |
-| OpenRouter  | `OPENROUTER_API_KEY`                               |
-| Together AI | `TOGETHER_AI_API_KEY`                              |
-| Perplexity  | `PERPLEXITY_API_KEY`                               |
-| Cohere      | `COHERE_API_KEY`                                   |
-| Cerebras    | `CEREBRAS_API_KEY`                                 |
-| DeepInfra   | `DEEPINFRA_API_KEY`                                |
-| GitLab      | `GITLAB_API_KEY`                                   |
-| Vercel      | `VERCEL_API_KEY`                                   |
+| Provider                | Environment Variable                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| OpenAI                  | `OPENAI_API_KEY`                                                                     |
+| Anthropic               | `ANTHROPIC_API_KEY`                                                                  |
+| Google                  | `GOOGLE_GENERATIVE_AI_API_KEY` or `GEMINI_API_KEY`                                   |
+| Google Vertex           | `GOOGLE_VERTEX_API_KEY`                                                              |
+| Google Vertex Anthropic | `GOOGLE_VERTEX_API_KEY`                                                              |
+| xAI                     | `XAI_API_KEY`                                                                        |
+| Vercel                  | `VERCEL_API_KEY`                                                                     |
+| Vercel AI Gateway       | `AI_GATEWAY_API_KEY`                                                                 |
+| Azure                   | `AZURE_API_KEY`                                                                      |
+| AWS Bedrock             | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`, or Bedrock bearer |
+| Groq                    | `GROQ_API_KEY`                                                                       |
+| DeepInfra               | `DEEPINFRA_API_KEY`                                                                  |
+| Mistral                 | `MISTRAL_API_KEY`                                                                    |
+| Together AI             | `TOGETHER_AI_API_KEY`                                                                |
+| Cohere                  | `COHERE_API_KEY`                                                                     |
+| Cerebras                | `CEREBRAS_API_KEY`                                                                   |
+| Perplexity              | `PERPLEXITY_API_KEY`                                                                 |
+| OpenRouter              | `OPENROUTER_API_KEY`                                                                 |
+| OpenAI-compatible       | `OPENAI_COMPATIBLE_API_KEY`                                                          |
+| GitLab                  | `GITLAB_TOKEN`                                                                       |
 
 ## Configuration
 
@@ -220,7 +224,6 @@ zencommit config validate
   "diff": {
     "truncateStrategy": "smart",
     "includeFileList": true,
-    "excludeGitignoreFiles": true,
     "maxFiles": 200,
     "smart": {
       "maxAddedLinesPerHunk": 12,
@@ -278,7 +281,6 @@ zencommit config validate
 | ------------------------------ | ------- | --------- | ----------------------------- |
 | `truncateStrategy`             | string  | `"smart"` | `"smart"` or `"byFile"`       |
 | `includeFileList`              | boolean | `true`    | Include list of changed files |
-| `excludeGitignoreFiles`        | boolean | `true`    | Respect .gitignore            |
 | `maxFiles`                     | number  | `200`     | Maximum files to include      |
 | `smart.maxAddedLinesPerHunk`   | number  | `12`      | Max added lines per hunk      |
 | `smart.maxRemovedLinesPerHunk` | number  | `12`      | Max removed lines per hunk    |

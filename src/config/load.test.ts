@@ -4,6 +4,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { ConfigLoadError, resolveConfig } from './load.js';
 
+const expectConfigLoadError = async (operation: Promise<unknown>): Promise<ConfigLoadError> => {
+  try {
+    await operation;
+  } catch (error) {
+    expect(error).toBeInstanceOf(ConfigLoadError);
+    return error as ConfigLoadError;
+  }
+  throw new Error('Expected config load to fail.');
+};
+
 const writeJson = async (filePath: string, data: unknown) => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, JSON.stringify(data), 'utf8');
@@ -24,22 +34,20 @@ describe('resolveConfig failure boundaries', () => {
   it('reports malformed inline config without echoing the environment value', async () => {
     process.env.ZENCOMMIT_CONFIG_CONTENT = '{"ai":{"model":"secret-model"';
 
-    await expect(resolveConfig(null)).rejects.toMatchObject({
-      name: 'ConfigLoadError',
-      source: 'inline',
-    });
-    await expect(resolveConfig(null)).rejects.toThrow(
-      'Invalid JSON in inline config from ZENCOMMIT_CONFIG_CONTENT',
-    );
-    await expect(resolveConfig(null)).rejects.not.toThrow('secret-model');
+    const error = await expectConfigLoadError(resolveConfig(null));
+
+    expect(error.source).toBe('inline');
+    expect(error.message).toContain('Invalid JSON in inline config from ZENCOMMIT_CONFIG_CONTENT');
+    expect(error.message).not.toContain('secret-model');
   });
 
   it('rejects inline config that parses to a non-object', async () => {
     process.env.ZENCOMMIT_CONFIG_CONTENT = JSON.stringify(['not', 'an', 'object']);
 
-    await expect(resolveConfig(null)).rejects.toThrow(ConfigLoadError);
-    await expect(resolveConfig(null)).rejects.toMatchObject({ source: 'inline' });
-    await expect(resolveConfig(null)).rejects.toThrow(
+    const error = await expectConfigLoadError(resolveConfig(null));
+
+    expect(error.source).toBe('inline');
+    expect(error.message).toContain(
       'Invalid inline config from ZENCOMMIT_CONFIG_CONTENT: expected a JSON object',
     );
   });
@@ -51,14 +59,12 @@ describe('resolveConfig failure boundaries', () => {
       const projectPath = path.join(repoRoot, 'zencommit.json');
       await fs.writeFile(projectPath, '{"ai":{"model":"secret-model"', 'utf8');
 
-      await expect(resolveConfig(repoRoot)).rejects.toMatchObject({
-        source: 'project',
-        path: projectPath,
-      });
-      await expect(resolveConfig(repoRoot)).rejects.toThrow(
-        `Failed to parse project config at ${projectPath}`,
-      );
-      await expect(resolveConfig(repoRoot)).rejects.not.toThrow('secret-model');
+      const error = await expectConfigLoadError(resolveConfig(repoRoot));
+
+      expect(error.source).toBe('project');
+      expect(error.path).toBe(projectPath);
+      expect(error.message).toContain(`Failed to parse project config at ${projectPath}`);
+      expect(error.message).not.toContain('secret-model');
     });
   });
 
@@ -70,11 +76,11 @@ describe('resolveConfig failure boundaries', () => {
       await fs.writeFile(customPath, JSON.stringify(null), 'utf8');
       process.env.ZENCOMMIT_CONFIG = customPath;
 
-      await expect(resolveConfig(repoRoot)).rejects.toMatchObject({
-        source: 'custom',
-        path: customPath,
-      });
-      await expect(resolveConfig(repoRoot)).rejects.toThrow(
+      const error = await expectConfigLoadError(resolveConfig(repoRoot));
+
+      expect(error.source).toBe('custom');
+      expect(error.path).toBe(customPath);
+      expect(error.message).toContain(
         `Invalid custom config at ${customPath}: expected a JSON object`,
       );
     });

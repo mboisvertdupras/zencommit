@@ -4,18 +4,18 @@ import { readJsonFile, resolvePath } from '../../util/fs.js';
 import { normalizeModelsDevData } from './modelsdev.js';
 import { logVerbose } from '../../util/logger.js';
 
-const normalizeLocalData = (data: unknown, fallbackIdPrefix = 'local'): ModelMetadata[] => {
+const hasModelId = (entry: unknown): entry is Partial<ModelMetadata> & { id: string } =>
+  !!entry && typeof entry === 'object' && typeof (entry as { id?: unknown }).id === 'string';
+
+const normalizeLocalData = (data: unknown): ModelMetadata[] => {
   if (Array.isArray(data)) {
-    return data
-      .map((entry) => entry as Partial<ModelMetadata>)
-      .filter((entry) => typeof entry.id === 'string')
-      .map((entry) => ({
-        id: entry.id ?? `${fallbackIdPrefix}/unknown`,
-        name: entry.name ?? entry.id ?? 'Unknown',
-        limits: entry.limits ?? { context: null, input: null, output: null },
-        pricing: entry.pricing,
-        capabilities: entry.capabilities,
-      }));
+    return data.filter(hasModelId).map((entry) => ({
+      id: entry.id,
+      name: entry.name ?? entry.id,
+      limits: entry.limits ?? { context: null, input: null, output: null },
+      pricing: entry.pricing,
+      capabilities: entry.capabilities,
+    }));
   }
   const normalized = normalizeModelsDevData(data);
   if (normalized.length > 0) {
@@ -45,10 +45,10 @@ export const createLocalProvider = (
         `Failed to parse local metadata file at ${resolvedPath}: ${(error as Error).message}`,
       );
     }
-    if (!data) {
+    if (data === undefined) {
       throw new Error(`Local metadata file not found at ${resolvedPath}`);
     }
-    const models = normalizeLocalData(data, 'local');
+    const models = normalizeLocalData(data);
     if (models.length === 0) {
       throw new Error(
         `Local metadata file at ${resolvedPath} did not contain any usable model metadata`,

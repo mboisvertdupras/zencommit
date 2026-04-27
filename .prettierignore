@@ -1,9 +1,3 @@
 node_modules
 coverage
 dist
-
-# local orchestration artifacts
-.ralph
-PROMPT.md
-ralph*.yml
-specs

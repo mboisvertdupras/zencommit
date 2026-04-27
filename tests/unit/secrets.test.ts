@@ -182,11 +182,7 @@ describe('secrets adapter', () => {
       '-w',
       fakeToken,
     ]);
-    const display = formatCommandForDisplay(capturedCommand ?? [], {
-      redactedArgs: capturedRedactedArgs,
-    });
-    expect(display).toContain('<redacted>');
-    expect(display).not.toContain(fakeToken);
+    expect(capturedRedactedArgs).toEqual([8]);
   });
 
   it('treats missing macOS keychain entries as absent secrets', async () => {

@@ -32,7 +32,7 @@
 
 - Test runner: Vitest (`npm test`).
 - Unit tests live in `tests/unit/`; integration tests live in `tests/integration/`.
-- Keep parity-sensitive behavior covered (exit codes `0/2/3/4`, config precedence, auth fallback behavior, dry-run outputs).
+- Keep user-facing behavior covered (exit codes `0/2/3/4`, config precedence, auth fallback behavior, dry-run outputs).
 
 ## Commit & Pull Request Guidelines
 

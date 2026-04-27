@@ -205,7 +205,7 @@ describe('built CLI behavior', () => {
     const result = await runCli(['config', 'validate'], {
       env: {
         ...cleanCliEnv,
-        ZENCOMMIT_CONFIG_CONTENT: `{"auth":{"preferredEnvKey":"${fakeSecret}"`,
+        ZENCOMMIT_CONFIG_CONTENT: `{"ai":{"model":"${fakeSecret}"`,
       },
     });
 

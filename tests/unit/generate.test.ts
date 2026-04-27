@@ -149,7 +149,6 @@ describe('generateCommitMessage', () => {
     });
 
     expect(callModel).toHaveBeenCalledTimes(2);
-    expect(callModel.mock.calls[1]?.[0].user).toContain('Keep subject <= 10 chars.');
   });
 
   it('rejects injected model responses that would otherwise become an empty subject', async () => {

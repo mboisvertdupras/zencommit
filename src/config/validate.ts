@@ -92,9 +92,6 @@ export const validateConfig = (config: ResolvedConfig): ValidationResult => {
   if (!isBoolean(config.diff.includeFileList)) {
     addError(errors, 'diff.includeFileList', 'includeFileList must be a boolean.');
   }
-  if (!isBoolean(config.diff.excludeGitignoreFiles)) {
-    addError(errors, 'diff.excludeGitignoreFiles', 'excludeGitignoreFiles must be a boolean.');
-  }
   if (!isNumber(config.diff.maxFiles) || config.diff.maxFiles <= 0) {
     addError(errors, 'diff.maxFiles', 'maxFiles must be a positive number.');
   }

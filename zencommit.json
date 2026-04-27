@@ -19,7 +19,6 @@
   "diff": {
     "truncateStrategy": "smart",
     "includeFileList": true,
-    "excludeGitignoreFiles": true,
     "maxFiles": 200,
     "smart": {
       "maxAddedLinesPerHunk": 12,

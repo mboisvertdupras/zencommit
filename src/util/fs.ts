@@ -21,11 +21,17 @@ export const fileExists = async (filePath: string): Promise<boolean> => {
   }
 };
 
-export const readJsonFile = async <T>(filePath: string): Promise<T | null> => {
-  if (!(await fileExists(filePath))) {
-    return null;
+export const readJsonFile = async <T>(filePath: string): Promise<T | undefined> => {
+  let content: string;
+  try {
+    content = await fs.readFile(filePath, 'utf8');
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code === 'ENOENT') {
+      return undefined;
+    }
+    throw error;
   }
-  const content = await fs.readFile(filePath, 'utf8');
   return JSON.parse(content) as T;
 };
 

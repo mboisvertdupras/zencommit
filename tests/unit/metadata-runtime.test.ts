@@ -16,6 +16,16 @@ const writeFile = async (filePath: string, content: string) => {
   await fs.writeFile(filePath, content, 'utf8');
 };
 
+const expectMetadataError = async (operation: Promise<unknown>): Promise<Error> => {
+  try {
+    await operation;
+  } catch (error) {
+    expect(error).toBeInstanceOf(Error);
+    return error as Error;
+  }
+  throw new Error('Expected metadata operation to fail.');
+};
+
 const modelsDevFixture = (provider = 'openai', model = 'gpt-5') => ({
   [provider]: {
     id: provider,
@@ -69,10 +79,10 @@ describe('local metadata provider failure boundaries', () => {
         dir,
       );
 
-      await expect(provider.list?.()).rejects.toThrow(
-        `Failed to parse local metadata file at ${metadataPath}`,
-      );
-      await expect(provider.list?.()).rejects.not.toThrow('secret-model');
+      const error = await expectMetadataError(provider.list?.() ?? Promise.resolve());
+
+      expect(error.message).toContain(`Failed to parse local metadata file at ${metadataPath}`);
+      expect(error.message).not.toContain('secret-model');
     });
   });
 
@@ -111,10 +121,10 @@ describe('models.dev metadata provider failure boundaries', () => {
         metadataConfig({ providers: { modelsdev: { url, cacheTtlHours: 24 } } }),
       );
 
-      await expect(provider.list?.()).rejects.toThrow(
-        `Failed to parse models.dev response from ${url}`,
-      );
-      await expect(provider.list?.()).rejects.not.toThrow('secret-model');
+      const error = await expectMetadataError(provider.list?.() ?? Promise.resolve());
+
+      expect(error.message).toContain(`Failed to parse models.dev response from ${url}`);
+      expect(error.message).not.toContain('secret-model');
     });
   });
 

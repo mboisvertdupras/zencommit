@@ -37,7 +37,6 @@ export interface DiffSmartConfig {
 export interface DiffConfig {
   truncateStrategy: TruncateStrategy;
   includeFileList: boolean;
-  excludeGitignoreFiles: boolean;
   maxFiles: number;
   smart: DiffSmartConfig;
 }
@@ -62,17 +61,12 @@ export interface MetadataConfig {
   providers: MetadataProvidersConfig;
 }
 
-export interface AuthConfig {
-  preferredEnvKey?: string;
-}
-
 export interface ResolvedConfig {
   ai: AiConfig;
   commit: CommitConfig;
   git: GitConfig;
   diff: DiffConfig;
   metadata: MetadataConfig;
-  auth?: AuthConfig;
 }
 
 export const defaultConfig: ResolvedConfig = {
@@ -96,7 +90,6 @@ export const defaultConfig: ResolvedConfig = {
   diff: {
     truncateStrategy: 'smart',
     includeFileList: true,
-    excludeGitignoreFiles: true,
     maxFiles: 200,
     smart: {
       maxAddedLinesPerHunk: 12,

@@ -90,15 +90,9 @@ const ensureAuth = async (modelId: string): Promise<void> => {
   }
 };
 
-const callModelOnce = async (
-  input: GenerateInput,
-  strictSubject = false,
-): Promise<CommitMessage> => {
+const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
   await ensureAuth(input.modelId);
   const model = resolveModel(input.modelId, input);
-  const userPrompt = strictSubject
-    ? `${input.user}\nSubject must be <= ${input.maxSubjectChars} characters.`
-    : input.user;
 
   try {
     const result = await withTimeout(
@@ -107,7 +101,7 @@ const callModelOnce = async (
         schema: COMMIT_SCHEMA,
         messages: [
           { role: 'system', content: input.system },
-          { role: 'user', content: userPrompt },
+          { role: 'user', content: input.user },
         ],
         temperature: input.temperature,
         maxOutputTokens: input.maxOutputTokens,
@@ -127,7 +121,7 @@ const callModelOnce = async (
         model,
         messages: [
           { role: 'system', content: input.system },
-          { role: 'user', content: userPrompt },
+          { role: 'user', content: input.user },
         ],
         temperature: input.temperature,
         maxOutputTokens: input.maxOutputTokens,
@@ -142,7 +136,7 @@ const callModelOnce = async (
       if (getVerbosity() >= 2) {
         logVerbose(2, 'llm: JSON parse failed, attempting repair');
       }
-      const repairPrompt = `${userPrompt}\nReturn ONLY valid JSON matching the schema.`;
+      const repairPrompt = `${input.user}\nReturn ONLY valid JSON matching the schema.`;
       const repairResult = await withTimeout(
         generateText({
           model,

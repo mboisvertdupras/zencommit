@@ -242,10 +242,7 @@ export const truncateDiffByFile = (
   const outputLines: string[] = [];
   let truncated = false;
   for (let i = 0; i < files.length; i += 1) {
-    const file = files[i];
-    if (!file) {
-      continue;
-    }
+    const file = files[i]!;
     const allocation = allocations[i] ?? 0;
     if (allocation <= 0) {
       truncated = true;
@@ -508,11 +505,8 @@ export const truncateDiffSmart = (
   const selectedFiles = new Set<number>();
 
   for (const hunk of hunks) {
-    const file = files[hunk.fileIndex];
-    const hunkData = file?.hunks[hunk.hunkIndex];
-    if (!file || !hunkData) {
-      continue;
-    }
+    const file = files[hunk.fileIndex]!;
+    const hunkData = file.hunks[hunk.hunkIndex]!;
 
     const headerTokens = selectedFiles.has(hunk.fileIndex)
       ? 0

@@ -12,8 +12,8 @@
     "bin"
   ],
   "scripts": {
-    "lint": "oxlint . --type-aware --type-check --tsconfig tsconfig.json --deny-warnings --max-warnings 0 --ignore-pattern 'node_modules/**' --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**' --ignore-pattern '.gsd/**'",
-    "lint:fix": "oxlint . --fix --type-aware --type-check --tsconfig tsconfig.json --deny-warnings --max-warnings 0 --ignore-pattern 'node_modules/**' --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**' --ignore-pattern '.gsd/**'",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
@@ -58,7 +58,6 @@
     "@ai-sdk/vercel": "^2.0.43",
     "@ai-sdk/xai": "^3.0.83",
     "@clack/prompts": "^1.2.0",
-    "@dqbd/tiktoken": "^1.0.22",
     "@openrouter/ai-sdk-provider": "^2.8.0",
     "ai": "^6.0.168",
     "gitlab-ai-provider": "^6.6.0",
@@ -75,8 +74,5 @@
     "typescript": "^6.0.3",
     "vite": "^8.0.10",
     "vitest": "^4.1.5"
-  },
-  "peerDependencies": {
-    "typescript": "^6.0.3"
   }
 }

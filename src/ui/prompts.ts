@@ -4,7 +4,7 @@ import { getProviderAuthConfigs } from '../auth/secrets.js';
 export type ConfirmAction = 'commit' | 'edit' | 'cancel';
 
 export const confirmCommit = async (message: string): Promise<ConfirmAction> => {
-  const action = await select({
+  const action = await select<ConfirmAction>({
     message: message.trim().length > 0 ? message : 'Commit message',
     options: [
       { value: 'commit', label: 'Commit' },
@@ -18,10 +18,7 @@ export const confirmCommit = async (message: string): Promise<ConfirmAction> => 
     return 'cancel';
   }
 
-  if (action === 'commit' || action === 'edit' || action === 'cancel') {
-    return action;
-  }
-  return 'cancel';
+  return action;
 };
 
 export const selectProviderKey = async (): Promise<string | null> => {
@@ -47,10 +44,7 @@ export const selectProviderKey = async (): Promise<string | null> => {
     return null;
   }
 
-  if (typeof action === 'string') {
-    return action;
-  }
-  return null;
+  return action;
 };
 
 export const promptForSecret = async (envKey: string): Promise<string | null> => {
@@ -64,10 +58,7 @@ export const promptForSecret = async (envKey: string): Promise<string | null> =>
     return null;
   }
 
-  if (typeof value === 'string') {
-    return value;
-  }
-  return null;
+  return value;
 };
 
 export const promptForModelSelection = async (
@@ -92,8 +83,5 @@ export const promptForModelSelection = async (
     return null;
   }
 
-  if (typeof value === 'string') {
-    return value;
-  }
-  return null;
+  return value;
 };
