@@ -8,6 +8,7 @@ import {
   type CommitMessage,
 } from './output.js';
 import { resolveLanguageModel } from './providers.js';
+import type { ModelCapabilities } from '../metadata/types.js';
 
 export type { CommitMessage } from './output.js';
 
@@ -20,6 +21,7 @@ export interface GenerateInput {
   timeoutMs: number;
   maxSubjectChars: number;
   style: 'conventional' | 'freeform';
+  modelCapabilities?: ModelCapabilities;
   openaiCompatible?: {
     baseUrl?: string;
     name?: string;
@@ -69,6 +71,14 @@ const isProviderAuthError = (error: unknown): boolean => {
 const resolveModel = (modelId: string, input: GenerateInput) =>
   resolveLanguageModel(modelId, { openaiCompatible: input.openaiCompatible });
 
+const supportsTemperature = (capabilities?: ModelCapabilities): boolean =>
+  capabilities?.temperature !== false;
+
+const buildModelOptions = (input: GenerateInput) => ({
+  maxOutputTokens: input.maxOutputTokens,
+  ...(supportsTemperature(input.modelCapabilities) ? { temperature: input.temperature } : {}),
+});
+
 const ensureAuth = async (modelId: string): Promise<void> => {
   const auth = resolveProviderAuth(modelId);
   if (!auth) {
@@ -93,6 +103,7 @@ const ensureAuth = async (modelId: string): Promise<void> => {
 const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
   await ensureAuth(input.modelId);
   const model = resolveModel(input.modelId, input);
+  const modelOptions = buildModelOptions(input);
 
   try {
     const result = await withTimeout(
@@ -103,8 +114,7 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
           { role: 'system', content: input.system },
           { role: 'user', content: input.user },
         ],
-        temperature: input.temperature,
-        maxOutputTokens: input.maxOutputTokens,
+        ...modelOptions,
       }),
       input.timeoutMs,
     );
@@ -123,8 +133,7 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
           { role: 'system', content: input.system },
           { role: 'user', content: input.user },
         ],
-        temperature: input.temperature,
-        maxOutputTokens: input.maxOutputTokens,
+        ...modelOptions,
       }),
       input.timeoutMs,
     );
@@ -144,8 +153,7 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
             { role: 'system', content: input.system },
             { role: 'user', content: repairPrompt },
           ],
-          temperature: input.temperature,
-          maxOutputTokens: input.maxOutputTokens,
+          ...modelOptions,
         }),
         input.timeoutMs,
       );

@@ -66,6 +66,7 @@ export const normalizeModelsDevData = (data: unknown): ModelMetadata[] => {
       const capabilities = {
         attachment: model.attachment,
         reasoning: model.reasoning,
+        temperature: model.temperature,
         toolCall: model.tool_call,
         structuredOutput: model.structured_output,
         modalities: model.modalities,

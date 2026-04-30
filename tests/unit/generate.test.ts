@@ -114,6 +114,31 @@ describe('generateCommitMessage', () => {
     expect(mockedGenerateText).toHaveBeenCalledTimes(2);
   });
 
+  it('omits temperature when model metadata marks it unsupported', async () => {
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    setSecretStoreForTesting(noSecretsStore);
+    mockedGenerateObject.mockResolvedValueOnce({
+      object: { subject: 'fix: avoid unsupported temperature', body: '' },
+    } as Awaited<ReturnType<typeof generateObject>>);
+
+    await expect(
+      generateCommitMessage(
+        baseInput({
+          modelId: 'openai/gpt-5.4-mini',
+          modelCapabilities: { reasoning: true, temperature: false },
+        }),
+      ),
+    ).resolves.toEqual({
+      subject: 'fix: avoid unsupported temperature',
+      body: '',
+    });
+
+    expect(mockedGenerateObject).toHaveBeenCalledTimes(1);
+    const request = mockedGenerateObject.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(request).toHaveProperty('maxOutputTokens', 200);
+    expect(request).not.toHaveProperty('temperature');
+  });
+
   it('rejects invalid repair JSON without echoing model output', async () => {
     process.env.OPENAI_API_KEY = 'test-openai-key';
     setSecretStoreForTesting(noSecretsStore);

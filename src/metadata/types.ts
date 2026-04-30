@@ -4,12 +4,24 @@ export interface ModelLimits {
   output: number | null;
 }
 
+export interface ModelCapabilities {
+  attachment?: unknown;
+  reasoning?: unknown;
+  temperature?: unknown;
+  toolCall?: unknown;
+  structuredOutput?: unknown;
+  modalities?: unknown;
+  family?: unknown;
+  openWeights?: unknown;
+  [key: string]: unknown;
+}
+
 export interface ModelMetadata {
   id: string;
   name: string;
   limits: ModelLimits;
   pricing?: unknown;
-  capabilities?: unknown;
+  capabilities?: ModelCapabilities;
 }
 
 export interface MetadataProvider {

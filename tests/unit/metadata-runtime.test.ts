@@ -4,7 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { defaultConfig, type MetadataConfig } from '../../src/config/types.js';
 import { createLocalProvider } from '../../src/metadata/providers/local.js';
-import { createModelsDevProvider } from '../../src/metadata/providers/modelsdev.js';
+import {
+  createModelsDevProvider,
+  normalizeModelsDevData,
+} from '../../src/metadata/providers/modelsdev.js';
 
 const withTempDir = async (fn: (dir: string) => Promise<void>) => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'zencommit-metadata-test-'));
@@ -33,6 +36,8 @@ const modelsDevFixture = (provider = 'openai', model = 'gpt-5') => ({
       [model]: {
         id: model,
         name: `${provider} ${model}`,
+        reasoning: true,
+        temperature: false,
         limit: { context: 128000, input: 128000, output: 8192 },
       },
     },
@@ -103,6 +108,18 @@ describe('local metadata provider failure boundaries', () => {
 });
 
 describe('models.dev metadata provider failure boundaries', () => {
+  it('normalizes supported feature flags from models.dev metadata', async () => {
+    const [model] = normalizeModelsDevData(modelsDevFixture('openai', 'gpt-5.4-mini'));
+
+    expect(model).toMatchObject({
+      id: 'openai/gpt-5.4-mini',
+      capabilities: {
+        reasoning: true,
+        temperature: false,
+      },
+    });
+  });
+
   it('reports malformed models.dev JSON without echoing the response payload', async () => {
     await withTempDir(async (dir) => {
       process.env.XDG_CACHE_HOME = path.join(dir, 'cache');

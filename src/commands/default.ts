@@ -178,7 +178,8 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
       if (getVerbosity() >= 2) {
         logJson(2, 'llm request', {
           modelId: config.ai.model,
-          temperature: config.ai.temperature,
+          temperature:
+            modelMetadata?.capabilities?.temperature === false ? undefined : config.ai.temperature,
           maxOutputTokens: Math.min(config.ai.maxOutputTokens, budget.outputTokens),
           timeoutMs: config.ai.timeoutMs,
           style: config.commit.style,
@@ -193,6 +194,7 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
         timeoutMs: config.ai.timeoutMs,
         maxSubjectChars: DEFAULT_MAX_SUBJECT_CHARS,
         style: config.commit.style,
+        modelCapabilities: modelMetadata?.capabilities,
         openaiCompatible: config.ai.openaiCompatible,
       });
       spinner?.success('Generated commit message.');
