@@ -139,6 +139,49 @@ describe('generateCommitMessage', () => {
     expect(request).not.toHaveProperty('temperature');
   });
 
+  it('omits temperature for reasoning models when cached metadata lacks an explicit flag', async () => {
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    setSecretStoreForTesting(noSecretsStore);
+    mockedGenerateObject.mockResolvedValueOnce({
+      object: { subject: 'fix: handle stale metadata', body: '' },
+    } as Awaited<ReturnType<typeof generateObject>>);
+
+    await expect(
+      generateCommitMessage(
+        baseInput({
+          modelId: 'openai/gpt-5.4-mini',
+          modelCapabilities: { reasoning: true },
+        }),
+      ),
+    ).resolves.toEqual({
+      subject: 'fix: handle stale metadata',
+      body: '',
+    });
+
+    const request = mockedGenerateObject.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(request).not.toHaveProperty('temperature');
+  });
+
+  it('passes system instructions through the AI SDK system option', async () => {
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    setSecretStoreForTesting(noSecretsStore);
+    mockedGenerateObject.mockResolvedValueOnce({
+      object: { subject: 'fix: use system option', body: '' },
+    } as Awaited<ReturnType<typeof generateObject>>);
+
+    await expect(generateCommitMessage(baseInput())).resolves.toEqual({
+      subject: 'fix: use system option',
+      body: '',
+    });
+
+    const request = mockedGenerateObject.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(request).toMatchObject({
+      system: 'Write a commit message.',
+      prompt: 'Diff content',
+    });
+    expect(request).not.toHaveProperty('messages');
+  });
+
   it('rejects invalid repair JSON without echoing model output', async () => {
     process.env.OPENAI_API_KEY = 'test-openai-key';
     setSecretStoreForTesting(noSecretsStore);

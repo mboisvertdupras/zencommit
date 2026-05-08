@@ -48,10 +48,8 @@ const verifyCredentials = async (
     await Promise.race([
       generateText({
         model,
-        messages: [
-          { role: 'system', content: 'Reply with OK.' },
-          { role: 'user', content: 'OK' },
-        ],
+        system: 'Reply with OK.',
+        prompt: 'OK',
         maxOutputTokens: 4,
       }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),

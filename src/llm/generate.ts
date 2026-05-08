@@ -72,7 +72,8 @@ const resolveModel = (modelId: string, input: GenerateInput) =>
   resolveLanguageModel(modelId, { openaiCompatible: input.openaiCompatible });
 
 const supportsTemperature = (capabilities?: ModelCapabilities): boolean =>
-  capabilities?.temperature !== false;
+  capabilities?.temperature === true ||
+  (capabilities?.temperature !== false && capabilities?.reasoning !== true);
 
 const buildModelOptions = (input: GenerateInput) => ({
   maxOutputTokens: input.maxOutputTokens,
@@ -110,10 +111,8 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
       generateObject({
         model,
         schema: COMMIT_SCHEMA,
-        messages: [
-          { role: 'system', content: input.system },
-          { role: 'user', content: input.user },
-        ],
+        system: input.system,
+        prompt: input.user,
         ...modelOptions,
       }),
       input.timeoutMs,
@@ -129,10 +128,8 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
     const textResult = await withTimeout(
       generateText({
         model,
-        messages: [
-          { role: 'system', content: input.system },
-          { role: 'user', content: input.user },
-        ],
+        system: input.system,
+        prompt: input.user,
         ...modelOptions,
       }),
       input.timeoutMs,
@@ -149,10 +146,8 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
       const repairResult = await withTimeout(
         generateText({
           model,
-          messages: [
-            { role: 'system', content: input.system },
-            { role: 'user', content: repairPrompt },
-          ],
+          system: input.system,
+          prompt: repairPrompt,
           ...modelOptions,
         }),
         input.timeoutMs,
