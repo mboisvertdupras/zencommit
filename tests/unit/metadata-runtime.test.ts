@@ -120,6 +120,38 @@ describe('models.dev metadata provider failure boundaries', () => {
     });
   });
 
+  it('scopes reseller-namespaced model ids under the source provider', () => {
+    const models = normalizeModelsDevData({
+      openai: {
+        id: 'openai',
+        models: {
+          'gpt-5.4-mini': {
+            id: 'gpt-5.4-mini',
+            reasoning: true,
+            temperature: false,
+          },
+        },
+      },
+      openrouter: {
+        id: 'openrouter',
+        models: {
+          'openai/gpt-5.4-mini': {
+            id: 'openai/gpt-5.4-mini',
+            reasoning: true,
+            temperature: true,
+          },
+        },
+      },
+    });
+
+    const ids = models.map((model) => model.id);
+    expect(ids).toContain('openai/gpt-5.4-mini');
+    expect(ids).toContain('openrouter/openai/gpt-5.4-mini');
+
+    const openaiCopy = models.find((model) => model.id === 'openai/gpt-5.4-mini');
+    expect(openaiCopy?.capabilities?.temperature).toBe(false);
+  });
+
   it('reports malformed models.dev JSON without echoing the response payload', async () => {
     await withTempDir(async (dir) => {
       process.env.XDG_CACHE_HOME = path.join(dir, 'cache');

@@ -18,10 +18,11 @@ const toNumberOrNull = (value: unknown): number | null => {
 };
 
 const normalizeModelId = (providerId: string, modelId: string): string => {
-  if (modelId.includes('/')) {
+  const prefix = `${providerId}/`;
+  if (modelId.startsWith(prefix)) {
     return modelId;
   }
-  return `${providerId}/${modelId}`;
+  return `${prefix}${modelId}`;
 };
 
 const toStringSafe = (value: unknown, fallback: string): string =>
