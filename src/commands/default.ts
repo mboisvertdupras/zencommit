@@ -247,10 +247,28 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
       }
     }
 
-    await commitMessage(message.subject, message.body, extraArgs, repoRoot);
+    const commitSpinner = process.stderr.isTTY
+      ? yoctoSpinner({ text: 'Committing...' }).start()
+      : null;
+    try {
+      await commitMessage(message.subject, message.body, extraArgs, repoRoot);
+      commitSpinner?.success('Committed.');
+    } catch (error) {
+      commitSpinner?.error('Commit failed.');
+      throw error;
+    }
     if (args.push) {
       logVerbose(1, 'pushing commit to remote');
-      await pushChanges(repoRoot);
+      const pushSpinner = process.stderr.isTTY
+        ? yoctoSpinner({ text: 'Pushing...' }).start()
+        : null;
+      try {
+        await pushChanges(repoRoot);
+        pushSpinner?.success('Pushed.');
+      } catch (error) {
+        pushSpinner?.error('Push failed.');
+        throw error;
+      }
     }
   } catch (error) {
     const failure = classifyDefaultCommandError(error);

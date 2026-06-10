@@ -45,15 +45,13 @@ const verifyCredentials = async (
     return true;
   }
   try {
-    await Promise.race([
-      generateText({
-        model,
-        system: 'Reply with OK.',
-        prompt: 'OK',
-        maxOutputTokens: 4,
-      }),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
-    ]);
+    await generateText({
+      model,
+      system: 'Reply with OK.',
+      prompt: 'OK',
+      maxOutputTokens: 4,
+      abortSignal: AbortSignal.timeout(timeoutMs),
+    });
     return true;
   } catch {
     return false;

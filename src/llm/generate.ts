@@ -44,16 +44,30 @@ const COMMIT_SCHEMA = jsonSchema<CommitMessage>({
 
 const MODEL_TIMEOUT_MESSAGE = 'Model call timed out';
 
-const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+const buildTimeoutSignal = (timeoutMs: number): AbortSignal | undefined => {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return promise;
+    return undefined;
   }
-  return await Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(MODEL_TIMEOUT_MESSAGE)), timeoutMs),
-    ),
-  ]);
+  return AbortSignal.timeout(timeoutMs);
+};
+
+// Mirrors the AI SDK's isAbortError, which rethrows these without wrapping.
+const isAbortError = (error: unknown): boolean =>
+  (error instanceof Error || error instanceof DOMException) &&
+  (error.name === 'AbortError' || error.name === 'ResponseAborted' || error.name === 'TimeoutError');
+
+const withModelTimeout = async <T>(
+  timeoutMs: number,
+  run: (abortSignal: AbortSignal | undefined) => Promise<T>,
+): Promise<T> => {
+  try {
+    return await run(buildTimeoutSignal(timeoutMs));
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw new Error(MODEL_TIMEOUT_MESSAGE);
+    }
+    throw error;
+  }
 };
 
 const isModelTimeoutError = (error: unknown): boolean =>
@@ -107,15 +121,15 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
   const modelOptions = buildModelOptions(input);
 
   try {
-    const result = await withTimeout(
+    const result = await withModelTimeout(input.timeoutMs, (abortSignal) =>
       generateObject({
         model,
         schema: COMMIT_SCHEMA,
         system: input.system,
         prompt: input.user,
         ...modelOptions,
+        abortSignal,
       }),
-      input.timeoutMs,
     );
     return validateCommitMessageOutput(result.object, 'structured output');
   } catch (error) {
@@ -125,14 +139,14 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
     if (getVerbosity() >= 2) {
       logVerbose(2, 'llm: structured output failed, falling back to text');
     }
-    const textResult = await withTimeout(
+    const textResult = await withModelTimeout(input.timeoutMs, (abortSignal) =>
       generateText({
         model,
         system: input.system,
         prompt: input.user,
         ...modelOptions,
+        abortSignal,
       }),
-      input.timeoutMs,
     );
 
     const rawText = textResult.text ?? '';
@@ -143,14 +157,14 @@ const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
         logVerbose(2, 'llm: JSON parse failed, attempting repair');
       }
       const repairPrompt = `${input.user}\nReturn ONLY valid JSON matching the schema.`;
-      const repairResult = await withTimeout(
+      const repairResult = await withModelTimeout(input.timeoutMs, (abortSignal) =>
         generateText({
           model,
           system: input.system,
           prompt: repairPrompt,
           ...modelOptions,
+          abortSignal,
         }),
-        input.timeoutMs,
       );
       return parseCommitMessageOutput(repairResult.text ?? '', 'repair response');
     }

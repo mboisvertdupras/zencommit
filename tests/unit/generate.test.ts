@@ -262,12 +262,53 @@ describe('generateCommitMessage', () => {
     });
   });
 
+  it('enforces the timeout via an AbortSignal instead of a loose timer', async () => {
+    vi.useFakeTimers();
+    try {
+      process.env.OPENAI_API_KEY = 'test-openai-key';
+      setSecretStoreForTesting(noSecretsStore);
+      mockedGenerateObject.mockResolvedValueOnce({
+        object: { subject: 'fix: exit promptly', body: '' },
+      } as Awaited<ReturnType<typeof generateObject>>);
+
+      await expect(generateCommitMessage(baseInput({ timeoutMs: 60_000 }))).resolves.toEqual({
+        subject: 'fix: exit promptly',
+        body: '',
+      });
+
+      const request = mockedGenerateObject.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(request.abortSignal).toBeInstanceOf(AbortSignal);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('omits the abort signal when timeoutMs is not a positive number', async () => {
+    process.env.OPENAI_API_KEY = 'test-openai-key';
+    setSecretStoreForTesting(noSecretsStore);
+    mockedGenerateObject.mockResolvedValueOnce({
+      object: { subject: 'fix: no timeout', body: '' },
+    } as Awaited<ReturnType<typeof generateObject>>);
+
+    await expect(generateCommitMessage(baseInput({ timeoutMs: 0 }))).resolves.toEqual({
+      subject: 'fix: no timeout',
+      body: '',
+    });
+
+    const request = mockedGenerateObject.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(request.abortSignal).toBeUndefined();
+  });
+
   it('preserves the model timeout signal instead of falling back with noisy output', async () => {
     process.env.OPENAI_API_KEY = 'test-openai-key';
     setSecretStoreForTesting(noSecretsStore);
-    mockedGenerateObject.mockImplementationOnce(
-      () => new Promise((resolve) => setTimeout(() => resolve({ object: {} } as never), 50)),
-    );
+    mockedGenerateObject.mockImplementationOnce((options) => {
+      const { abortSignal } = options as { abortSignal?: AbortSignal };
+      return new Promise((_, reject) => {
+        abortSignal?.addEventListener('abort', () => reject(abortSignal.reason));
+      }) as never;
+    });
 
     await expect(generateCommitMessage(baseInput({ timeoutMs: 1 }))).rejects.toThrow(
       'Model call timed out',
