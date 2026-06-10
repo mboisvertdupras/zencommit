@@ -54,7 +54,9 @@ const buildTimeoutSignal = (timeoutMs: number): AbortSignal | undefined => {
 // Mirrors the AI SDK's isAbortError, which rethrows these without wrapping.
 const isAbortError = (error: unknown): boolean =>
   (error instanceof Error || error instanceof DOMException) &&
-  (error.name === 'AbortError' || error.name === 'ResponseAborted' || error.name === 'TimeoutError');
+  (error.name === 'AbortError' ||
+    error.name === 'ResponseAborted' ||
+    error.name === 'TimeoutError');
 
 const withModelTimeout = async <T>(
   timeoutMs: number,
