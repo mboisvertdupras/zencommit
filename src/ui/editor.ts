@@ -18,26 +18,39 @@ const runEditor = (command: string, args: string[]): Promise<number> =>
     });
   });
 
+export const tokenizeEditorCommand = (editor: string): string[] => {
+  const tokens: string[] = [];
+  const pattern = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  for (const match of editor.matchAll(pattern)) {
+    tokens.push(match[1] ?? match[2] ?? match[3] ?? '');
+  }
+  return tokens.filter((token) => token.length > 0);
+};
+
 export const openEditor = async (initialText: string): Promise<string> => {
-  const editor = process.env.EDITOR;
-  if (!editor) {
+  const editor = process.env.VISUAL || process.env.EDITOR;
+  const [command, ...args] = editor ? tokenizeEditorCommand(editor) : [];
+  if (!command) {
+    console.warn(
+      'No editor configured. Set VISUAL or EDITOR to edit the message; keeping the generated one.',
+    );
     return initialText;
   }
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'zencommit-'));
-  const filePath = path.join(tempDir, 'COMMIT_EDITMSG');
-  await fs.writeFile(filePath, `${initialText.trim()}\n`, 'utf8');
+  try {
+    const filePath = path.join(tempDir, 'COMMIT_EDITMSG');
+    await fs.writeFile(filePath, `${initialText.trim()}\n`, 'utf8');
 
-  const [command, ...args] = editor.split(' ');
-  if (!command) {
-    return initialText;
+    const exitCode = await runEditor(command, [...args, filePath]);
+    if (exitCode !== 0) {
+      console.warn(`Editor exited with code ${exitCode}; keeping the original message.`);
+      return initialText;
+    }
+
+    const updated = await fs.readFile(filePath, 'utf8');
+    return updated.trim();
+  } finally {
+    await fs.rm(tempDir, { recursive: true, force: true });
   }
-
-  const exitCode = await runEditor(command, [...args, filePath]);
-  if (exitCode !== 0) {
-    return initialText;
-  }
-
-  const updated = await fs.readFile(filePath, 'utf8');
-  return updated.trim();
 };
