@@ -200,9 +200,7 @@ file-reads at verbose level are avoidable for free.
 Then, immediately after the `validateConfig` block (after line 73), emit:
 
 - For each `findSensitiveOverrides(sources)` entry:
-  `console.warn(\`Warning: ${path} is set by ${source} config; prompts and OPENAI_COMPATIBLE_API_KEY (if set) will be sent to that endpoint.\`)`
-  where `source` renders as `project (zencommit.json)` or
-  `inline (ZENCOMMIT_CONFIG_CONTENT)`.
+  `console.warn(\`Warning: ${path} is set by ${source} config; prompts and OPENAI_COMPATIBLE_API_KEY (if set) will be sent to that endpoint.\`)`where`source`renders as`project (zencommit.json)`or`inline (ZENCOMMIT_CONFIG_CONTENT)`.
 - Condition 2 (cleartext): if the merged
   `config.ai.openaiCompatible?.baseUrl` is `http:` to a non-loopback host
   (use `new URL(...)` in a try/catch; unparseable → skip, the provider layer

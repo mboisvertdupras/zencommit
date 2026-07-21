@@ -67,28 +67,30 @@ CI uses `actions/checkout@v6` / `actions/setup-node@v6` (recently bumped for Nod
 
 ## Commands you will need
 
-| Purpose       | Command                              | Expected on success |
-|---------------|--------------------------------------|---------------------|
-| Install       | `npm ci`                             | exit 0              |
-| Audit (probe) | `npm audit --audit-level=moderate`   | currently exit ≠ 0 (the ws advisory) |
-| Audit (gate)  | `npm audit --audit-level=high`       | exit 0 today        |
-| Unit loop     | `npm run test:unit` (created in Step 2) | all pass, no build |
-| Full tests    | `npm test`                           | all pass            |
-| YAML sanity   | `node -e "console.log('ok')"` + push to a branch for Actions validation | — |
+| Purpose       | Command                                                                 | Expected on success                  |
+| ------------- | ----------------------------------------------------------------------- | ------------------------------------ |
+| Install       | `npm ci`                                                                | exit 0                               |
+| Audit (probe) | `npm audit --audit-level=moderate`                                      | currently exit ≠ 0 (the ws advisory) |
+| Audit (gate)  | `npm audit --audit-level=high`                                          | exit 0 today                         |
+| Unit loop     | `npm run test:unit` (created in Step 2)                                 | all pass, no build                   |
+| Full tests    | `npm test`                                                              | all pass                             |
+| YAML sanity   | `node -e "console.log('ok')"` + push to a branch for Actions validation | —                                    |
 
 ## Scope
 
 **In scope** (the only files you should modify):
+
 - `.github/workflows/ci.yml`
 - `package.json` (scripts only — no dependency changes except those made by `npm audit fix` to `package-lock.json` in Step 3, if it succeeds)
 - `package-lock.json` (only via `npm audit fix`)
 - `AGENTS.md` (commands section)
 
 **Out of scope** (do NOT touch, even though they look related):
+
 - `.github/workflows/release.yml` — publishing flow, separately owned.
 - `engines` field in `package.json` — keep `>=22.14.0`.
 - Adding husky/lint-staged/pre-commit hooks — considered and rejected for now (single-maintainer repo, CI is the gate; see plans/README.md).
-- Removing the `pretest` hook — keep `npm test` building first (integration tests need fresh `dist/`); we add a *parallel* fast path instead.
+- Removing the `pretest` hook — keep `npm test` building first (integration tests need fresh `dist/`); we add a _parallel_ fast path instead.
 
 ## Git workflow
 
@@ -133,7 +135,7 @@ In `package.json` scripts, add (keeping existing scripts untouched):
 "test:unit": "vitest run --exclude '**/tests/integration/**'",
 ```
 
-Then check the exclusion semantics empirically — Vitest's `--exclude` *adds* to default excludes. Expected: `npm run test:unit` runs all colocated `src/**/*.test.ts` and `tests/unit/**` files but zero files from `tests/integration/`. If the flag form doesn't exclude correctly in this Vitest major (4.x), use the project-glob alternative: `"test:unit": "vitest run src tests/unit"`.
+Then check the exclusion semantics empirically — Vitest's `--exclude` _adds_ to default excludes. Expected: `npm run test:unit` runs all colocated `src/**/*.test.ts` and `tests/unit/**` files but zero files from `tests/integration/`. If the flag form doesn't exclude correctly in this Vitest major (4.x), use the project-glob alternative: `"test:unit": "vitest run src tests/unit"`.
 
 Update `AGENTS.md`'s command list: add `npm run test:unit` — "fast unit suite, no build required (integration tests need `npm test`)".
 
@@ -153,16 +155,16 @@ Run `npm audit fix` (lockfile-only changes expected). Then `npm audit --audit-le
 Append a second job to `ci.yml` (independent of the matrix job):
 
 ```yaml
-  audit:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22.14.0'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm audit --audit-level=<level from Step 3>
+audit:
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '22.14.0'
+        cache: 'npm'
+    - run: npm ci
+    - run: npm audit --audit-level=<level from Step 3>
 ```
 
 **Verify**: YAML parse check as in Step 1; locally run the exact audit command → exit 0.
@@ -195,7 +197,7 @@ Machine-checkable. ALL must hold:
 Stop and report back (do not improvise) if:
 
 - `npm audit fix` changes any `dependencies` semver range in `package.json` (it should only touch the lockfile) — revert and report.
-- The Node 24 matrix leg fails — that is a *discovery*, not a bug in this plan; report the failure output verbatim and leave the matrix in place with the leg marked `continue-on-error: true` only if the operator approves.
+- The Node 24 matrix leg fails — that is a _discovery_, not a bug in this plan; report the failure output verbatim and leave the matrix in place with the leg marked `continue-on-error: true` only if the operator approves.
 - Vitest exclusion can't be made to skip integration tests with either form in Step 2.
 - You cannot push and the operator is unavailable — complete Steps 1–4, mark the plan BLOCKED on Step 5 in `plans/README.md`.
 

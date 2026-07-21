@@ -23,7 +23,7 @@
 
 ## Why this matters
 
-When `zencommit auth login` stores an API key in the macOS Keychain, it spawns `security add-generic-password … -w <THE KEY VALUE>` — the secret rides in the child process's argv, which is visible to **any other local process** via `ps`/`procfs`-equivalents for the lifetime of the (short) command. The CLI's own display-redaction (`redactedArgs`) hides it from zencommit's logs, but not from the OS process table. Separately, the documented non-interactive flow `zencommit auth login --env-key X --token <token>` puts the secret in *zencommit's own* argv and typically in shell history. Both are classic local-disclosure bugs; the fixes are mechanical: feed `security` its command via stdin (`security -i`), and offer `--token-stdin` for scripts.
+When `zencommit auth login` stores an API key in the macOS Keychain, it spawns `security add-generic-password … -w <THE KEY VALUE>` — the secret rides in the child process's argv, which is visible to **any other local process** via `ps`/`procfs`-equivalents for the lifetime of the (short) command. The CLI's own display-redaction (`redactedArgs`) hides it from zencommit's logs, but not from the OS process table. Separately, the documented non-interactive flow `zencommit auth login --env-key X --token <token>` puts the secret in _zencommit's own_ argv and typically in shell history. Both are classic local-disclosure bugs; the fixes are mechanical: feed `security` its command via stdin (`security -i`), and offer `--token-stdin` for scripts.
 
 ## Current state
 
@@ -54,7 +54,7 @@ async set(envKey: string, value: string): Promise<void> {
 }
 ```
 
-  Reads (`get`, lines 276–297) and deletes (299–313) pass only the *account name* in argv — fine as-is. The store is injectable: the constructor takes a `runner: ExecRunner = exec`, and `tests/unit/secrets.test.ts` already passes fake runners.
+Reads (`get`, lines 276–297) and deletes (299–313) pass only the _account name_ in argv — fine as-is. The store is injectable: the constructor takes a `runner: ExecRunner = exec`, and `tests/unit/secrets.test.ts` already passes fake runners.
 
 - `src/util/exec.ts` — the only child-process wrapper. `runCommand` (lines 196–249) spawns with `stdio: ['ignore', 'pipe', 'pipe']` — **no stdin support today**. `ExecOptions` is lines 139–147.
 - `src/commands/auth.ts` — `runAuthLogin` (lines 61–112): `const token = args.token ?? (await promptForSecret(envKey));`. The `--token` flag is defined in `src/index.ts:123` (`.option('token', { type: 'string', describe: 'Secret token value' })`).
@@ -72,17 +72,18 @@ TypeScript ESM strict; arrow-function exports; errors via the existing `toKeycha
 
 ## Commands you will need
 
-| Purpose   | Command                                              | Expected on success |
-|-----------|------------------------------------------------------|---------------------|
-| Install   | `npm ci`                                             | exit 0              |
-| Typecheck | `npm run typecheck`                                  | exit 0              |
-| Lint      | `npm run lint`                                       | exit 0, 0 warnings  |
-| Tests     | `npx vitest run tests/unit/secrets.test.ts tests/unit/exec.test.ts` | all pass |
-| Full gate | `npm run typecheck && npm run lint && npm test`      | all exit 0          |
+| Purpose   | Command                                                             | Expected on success |
+| --------- | ------------------------------------------------------------------- | ------------------- |
+| Install   | `npm ci`                                                            | exit 0              |
+| Typecheck | `npm run typecheck`                                                 | exit 0              |
+| Lint      | `npm run lint`                                                      | exit 0, 0 warnings  |
+| Tests     | `npx vitest run tests/unit/secrets.test.ts tests/unit/exec.test.ts` | all pass            |
+| Full gate | `npm run typecheck && npm run lint && npm test`                     | all exit 0          |
 
 ## Scope
 
 **In scope** (the only files you should modify):
+
 - `src/util/exec.ts` (add optional `stdin` support)
 - `src/auth/secrets.ts` (rewrite `set` to use `security -i`)
 - `src/commands/auth.ts` + `src/index.ts` (add `--token-stdin`)
@@ -90,6 +91,7 @@ TypeScript ESM strict; arrow-function exports; errors via the existing `toKeycha
 - `README.md` (auth section update)
 
 **Out of scope** (do NOT touch, even though they look related):
+
 - `get`/`delete` keychain paths — no secret in their argv.
 - The env-injection in `src/llm/generate.ts:109-111` (`process.env[key] = value`) — that is how AI SDKs receive keys by convention; not a defect.
 - Deprecating/removing `--token` — keep it working (scripts depend on it); we add the safer alternative and document the trade-off.
@@ -136,6 +138,7 @@ async set(envKey: string, value: string): Promise<void> {
 ```
 
 Notes:
+
 - `this.service` is the constant `'zencommit'` and `envKey` is validated against the known-key allowlist upstream (`validateEnvKey` in `src/commands/auth.ts:22-27`), so only `value` needs quoting.
 - `redactedArgs` is no longer needed for this call (argv is just `security -i`).
 - **Behavioral check on error shape**: in `-i` mode, a failed inner command may surface as a non-zero exit of `security` itself with the message on stderr — which the runner turns into an `ExecError`, same as before. Keep the existing `toKeychainFailureError` wrapping.

@@ -17,7 +17,7 @@
 - **Priority**: P1
 - **Effort**: M
 - **Risk**: LOW
-- **Depends on**: none (and it *unblocks* plan 004, which refactors `providers.ts`)
+- **Depends on**: none (and it _unblocks_ plan 004, which refactors `providers.ts`)
 - **Category**: tests
 - **Planned at**: commit `cd2908e`, 2026-06-10
 
@@ -45,23 +45,25 @@ Existing test exemplars:
 
 ## Commands you will need
 
-| Purpose   | Command                                              | Expected on success |
-|-----------|------------------------------------------------------|---------------------|
-| Install   | `npm ci`                                             | exit 0              |
-| Typecheck | `npm run typecheck`                                  | exit 0              |
-| Lint      | `npm run lint`                                       | exit 0, 0 warnings  |
-| One file  | `npx vitest run src/llm/providers.test.ts`           | all pass            |
-| All tests | `npx vitest run`                                     | all pass            |
-| Full gate | `npm run typecheck && npm run lint && npm test`      | all exit 0          |
+| Purpose   | Command                                         | Expected on success |
+| --------- | ----------------------------------------------- | ------------------- |
+| Install   | `npm ci`                                        | exit 0              |
+| Typecheck | `npm run typecheck`                             | exit 0              |
+| Lint      | `npm run lint`                                  | exit 0, 0 warnings  |
+| One file  | `npx vitest run src/llm/providers.test.ts`      | all pass            |
+| All tests | `npx vitest run`                                | all pass            |
+| Full gate | `npm run typecheck && npm run lint && npm test` | all exit 0          |
 
 ## Scope
 
 **In scope** (create only):
+
 - `src/llm/providers.test.ts`
 - `src/llm/output.test.ts`
 - `src/llm/prompt.test.ts`
 
 **Out of scope** (do NOT touch):
+
 - All production source files. If a test reveals a real bug, write the test to pin **current** behavior, and report the bug in your final summary instead of fixing it.
 - `tests/unit/generate.test.ts` — leave existing coverage alone.
 - Do not add a `vitest.config.ts` and do not add test scripts to `package.json`.
@@ -83,7 +85,7 @@ Test `resolveLanguageModel` directly (no mocking of `@ai-sdk/*` packages to star
   - `resolveLanguageModel('nope/whatever')` throws `Unsupported model provider: nope` (raw, un-normalized id in message).
   - `resolveLanguageModel('openai-compatible/m')` with no options/env throws the `OPENAI_COMPATIBLE_BASE_URL is required` error. Use `vi.stubEnv`/`afterEach` to guarantee `OPENAI_COMPATIBLE_BASE_URL` is unset.
 - **Happy-path construction**: for ids `openai/gpt-4o`, `anthropic/claude-sonnet-4-5`, `groq/llama-3.3-70b`, assert the call returns a truthy value and does not throw.
-- **Alias/id table** (the heart of this file — pins behavior for plan 004). ⚠ **Plan 008 interaction — check first**: if plan 008 (remove provider aliases) has landed (`grep -c PROVIDER_ALIASES src/llm/providers.ts` → 0), aliases are *rejected* and three canonical ids are renamed; in that case `src/llm/providers.test.ts` will already exist with the rejection table from 008 — extend it rather than recreating, and skip the equivalence list below. Otherwise (aliases still present), for each alias pair assert both calls succeed (don't compare instances, just non-throw + truthy):
+- **Alias/id table** (the heart of this file — pins behavior for plan 004). ⚠ **Plan 008 interaction — check first**: if plan 008 (remove provider aliases) has landed (`grep -c PROVIDER_ALIASES src/llm/providers.ts` → 0), aliases are _rejected_ and three canonical ids are renamed; in that case `src/llm/providers.test.ts` will already exist with the rejection table from 008 — extend it rather than recreating, and skip the equivalence list below. Otherwise (aliases still present), for each alias pair assert both calls succeed (don't compare instances, just non-throw + truthy):
   `gemini/x` & `google/x`; `aws-bedrock/x` & `bedrock/x`; `amazon-bedrock/x`; `google-vertex/x` & `vertex/x`; `google-vertex-anthropic/x` & `vertex-anthropic/x`; `azure-openai/x` & `azure/x`; `together.ai/x` & `togetherai/x`; `xai-grok/x` & `xai/x`; `open-router/x` & `openrouter/x`; `vercel-ai-gateway/x`, `ai-gateway/x` & `gateway/x`; `gitlab-ai/x`, `gitlab-duo/x` & `gitlab/x`. Also case-insensitivity: `OpenAI/gpt-4o` succeeds.
   Drive these with `it.each` to keep the file compact.
 - **openai-compatible precedence**: with `options.openaiCompatible = { baseUrl: 'https://example.test/v1', name: 'custom' }`, the call succeeds; with only `OPENAI_COMPATIBLE_BASE_URL` env stubbed, it also succeeds.
@@ -123,7 +125,7 @@ Use the **real** template files (no fs mocking — they live at `src/llm/prompts
 
 ## Test plan
 
-This plan *is* the test plan (Steps 1–3). Structural pattern: `tests/unit/generate.test.ts` for helpers/cleanup discipline; `src/llm/truncate.test.ts` for colocated pure-function style. Expected new test count: roughly 35–50 cases across three files.
+This plan _is_ the test plan (Steps 1–3). Structural pattern: `tests/unit/generate.test.ts` for helpers/cleanup discipline; `src/llm/truncate.test.ts` for colocated pure-function style. Expected new test count: roughly 35–50 cases across three files.
 
 ## Done criteria
 

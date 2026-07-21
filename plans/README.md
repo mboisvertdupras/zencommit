@@ -20,21 +20,21 @@ row when done.
 
 ## Execution order & status
 
-| Plan | Title | Priority | Effort | Depends on | Status |
-|------|-------|----------|--------|------------|--------|
-| 001  | Fix three small correctness/perf bugs in the prompt-budget path | P1 | S | — | TODO |
-| 002  | Make the models.dev metadata fetch unable to hang or fail a commit run | P1 | S | — | TODO |
-| 008  | Remove provider aliases — one canonical id per provider, aligned with models.dev | P2 | M | — | TODO |
-| 003  | Add unit tests for the untested LLM pure layer (providers, output, prompt) | P1 | M | — | TODO |
-| 004  | Lazy-load provider SDKs so a run only pays for the provider it uses | P2 | M | 003 | TODO |
-| 005  | Keep API keys out of process argv (keychain writes and `auth login --token`) | P2 | M | — | TODO |
-| 006  | Harden the commit-message editor flow (cleanup, fallbacks, honest failures) | P2 | M | — | TODO |
-| 007  | CI matrix, audit gate, and a fast local test loop | P2 | S | — | TODO |
-| 013  | Warn when repo-supplied config redirects prompts/credentials to a custom endpoint | P2 | M | not concurrent with 001 | TODO |
-| 012  | Classify exit codes with typed errors instead of message regexes | P2 | M | after 004 + 008 | TODO |
-| 009  | Make README and AGENTS.md stop claiming things the code doesn't do | P2 | S | after 005 + 008 (README) | TODO |
-| 010  | Delete the orphaned root entrypoint and dead config-command code | P3 | S | — | TODO |
-| 011  | Enforce numeric ranges in validateConfig (temperature, cacheTtlHours) | P3 | S | not concurrent with 009 (README) | TODO |
+| Plan | Title                                                                             | Priority | Effort | Depends on                       | Status |
+| ---- | --------------------------------------------------------------------------------- | -------- | ------ | -------------------------------- | ------ |
+| 001  | Fix three small correctness/perf bugs in the prompt-budget path                   | P1       | S      | —                                | TODO   |
+| 002  | Make the models.dev metadata fetch unable to hang or fail a commit run            | P1       | S      | —                                | TODO   |
+| 008  | Remove provider aliases — one canonical id per provider, aligned with models.dev  | P2       | M      | —                                | TODO   |
+| 003  | Add unit tests for the untested LLM pure layer (providers, output, prompt)        | P1       | M      | —                                | TODO   |
+| 004  | Lazy-load provider SDKs so a run only pays for the provider it uses               | P2       | M      | 003                              | TODO   |
+| 005  | Keep API keys out of process argv (keychain writes and `auth login --token`)      | P2       | M      | —                                | TODO   |
+| 006  | Harden the commit-message editor flow (cleanup, fallbacks, honest failures)       | P2       | M      | —                                | TODO   |
+| 007  | CI matrix, audit gate, and a fast local test loop                                 | P2       | S      | —                                | TODO   |
+| 013  | Warn when repo-supplied config redirects prompts/credentials to a custom endpoint | P2       | M      | not concurrent with 001          | TODO   |
+| 012  | Classify exit codes with typed errors instead of message regexes                  | P2       | M      | after 004 + 008                  | TODO   |
+| 009  | Make README and AGENTS.md stop claiming things the code doesn't do                | P2       | S      | after 005 + 008 (README)         | TODO   |
+| 010  | Delete the orphaned root entrypoint and dead config-command code                  | P3       | S      | —                                | TODO   |
+| 011  | Enforce numeric ranges in validateConfig (temperature, cacheTtlHours)             | P3       | S      | not concurrent with 009 (README) | TODO   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
@@ -56,7 +56,7 @@ see dependency notes.)
 
 (Each was confirmed against the code at `cd2908e`; promote to a numbered plan when picked up.)
 
-- ~~**Provider alias registry divergence**~~ — **promoted to plan 008** (2026-06-10, maintainer decision). Approach changed from *consolidate into one registry* to *remove aliases entirely*, with canonical ids aligned to models.dev's keys (`bedrock`→`amazon-bedrock`, `vertex`→`google-vertex`, `vertex-anthropic`→`google-vertex-anthropic`) so the single surviving name resolves the provider, auth, AND metadata.
+- ~~**Provider alias registry divergence**~~ — **promoted to plan 008** (2026-06-10, maintainer decision). Approach changed from _consolidate into one registry_ to _remove aliases entirely_, with canonical ids aligned to models.dev's keys (`bedrock`→`amazon-bedrock`, `vertex`→`google-vertex`, `vertex-anthropic`→`google-vertex-anthropic`) so the single surviving name resolves the provider, auth, AND metadata.
 - ~~**Project-config trust boundary**~~ — **promoted to plan 013** (2026-07-21). Warn-only mitigation per the recorded policy: stderr notice when project/inline config selects an `openai-compatible` endpoint, plus a cleartext notice for non-loopback `http:` baseUrls. Blocking/trust-store mechanics explicitly deferred.
 - ~~**Docs truth pass**~~ — **promoted to plan 009** (2026-07-21). Correction found during promotion: item (d) was half wrong — `ZENCOMMIT_CONFIG_CONTENT` IS documented (README:176-178); only `ZENCOMMIT_MOCK_RESPONSE` is undocumented, and the plan documents it in AGENTS.md (contributor-facing), not README.
 - ~~**Dead/vestigial code sweep**~~ — **promoted to plan 010** (2026-07-21), minus the `PROVIDER_ALIASES` identity entries, which plan 008 supersedes (it deletes the whole table); 010 explicitly excludes them.

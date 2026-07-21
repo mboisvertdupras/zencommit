@@ -11,7 +11,7 @@
 > If any in-scope file changed since this plan was written, compare the
 > "Current state" excerpts against the live code before proceeding; on a
 > mismatch, treat it as a STOP condition. Two expected exceptions, not drift:
-> (a) `src/llm/providers.test.ts` is *created by plan 003* after the planned-at
+> (a) `src/llm/providers.test.ts` is _created by plan 003_ after the planned-at
 > SHA; (b) if plan 008 (remove provider aliases) already landed,
 > `PROVIDER_ALIASES`/`normalizeProviderId` are gone and three factory keys are
 > renamed (`amazon-bedrock`, `google-vertex`, `google-vertex-anthropic`) —
@@ -57,18 +57,19 @@ TypeScript ESM, strict mode, arrow-function exports, Prettier + oxlint (zero war
 
 ## Commands you will need
 
-| Purpose   | Command                                              | Expected on success |
-|-----------|------------------------------------------------------|---------------------|
-| Install   | `npm ci`                                             | exit 0              |
-| Typecheck | `npm run typecheck`                                  | exit 0              |
-| Lint      | `npm run lint`                                       | exit 0, 0 warnings  |
-| Build     | `npm run build`                                      | exit 0 (also verifies dist) |
-| Tests     | `npx vitest run`                                     | all pass            |
-| Timing    | the `node -e` snippet above                          | see step targets    |
+| Purpose   | Command                     | Expected on success         |
+| --------- | --------------------------- | --------------------------- |
+| Install   | `npm ci`                    | exit 0                      |
+| Typecheck | `npm run typecheck`         | exit 0                      |
+| Lint      | `npm run lint`              | exit 0, 0 warnings          |
+| Build     | `npm run build`             | exit 0 (also verifies dist) |
+| Tests     | `npx vitest run`            | all pass                    |
+| Timing    | the `node -e` snippet above | see step targets            |
 
 ## Scope
 
 **In scope** (the only files you should modify):
+
 - `src/llm/providers.ts`
 - `src/llm/generate.ts` (one `await`)
 - `src/commands/auth.ts` (make its `resolveModel` async, one `await`)
@@ -76,9 +77,10 @@ TypeScript ESM, strict mode, arrow-function exports, Prettier + oxlint (zero war
 - `tests/unit/generate.test.ts` (only if its provider-error tests need `await` adjustments)
 
 **Out of scope** (do NOT touch, even though they look related):
+
 - `package.json` dependencies — do NOT demote `@ai-sdk/*` to optional/peer deps in this plan. That changes install behavior for users and is a separate decision.
 - `src/auth/secrets.ts` provider table — different subsystem (auth env keys), even though it looks like a duplicate registry.
-- `src/metadata/**` — model *metadata* is unrelated to provider *SDK* loading.
+- `src/metadata/**` — model _metadata_ is unrelated to provider _SDK_ loading.
 - The alias set and error messages — behavior must be byte-identical (plan 003's tests enforce this).
 
 ## Git workflow
@@ -138,6 +140,7 @@ Every entry mirrors the original import name exactly (the static import list at 
 `npm run build`, then re-run the timing snippet 3×. Then run the packaging smoke test:
 
 **Verify**:
+
 - median import time for `dist/llm/providers.js` **< 30 ms** (it should now import only the alias tables);
 - `node dist/index.js --help` still exits 0;
 - `npm run smoke:install-matrix` → exit 0 (confirms packed-artifact execution still works for global/npx/local installs — dynamic imports must resolve in all three layouts);
@@ -173,5 +176,5 @@ Stop and report back (do not improvise) if:
 ## Maintenance notes
 
 - This unlocks (but does not perform) dependency-footprint work: with lazy loading, `@ai-sdk/*` packages could become `optionalDependencies` or install-on-demand. That is a user-facing install-behavior change needing a maintainer decision — deliberately out of scope.
-- Reviewer should scrutinize: the factory table entries against the old import list one-by-one (a typo'd package name now fails at *runtime* for that provider only, not at build time). The alias tests catch all of them, which is why plan 003 is a hard dependency.
+- Reviewer should scrutinize: the factory table entries against the old import list one-by-one (a typo'd package name now fails at _runtime_ for that provider only, not at build time). The alias tests catch all of them, which is why plan 003 is a hard dependency.
 - Future provider additions must add: a factory entry here, an auth entry in `src/auth/secrets.ts`, and a row in README — see plan 008 (remove provider aliases), which sets the naming rule: one id per provider, matching models.dev's key.

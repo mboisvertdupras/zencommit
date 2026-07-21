@@ -23,13 +23,13 @@
 
 ## Why this matters
 
-Every plain `zencommit` run resolves model metadata (token limits) before calling the LLM. When the on-disk cache is cold or stale, that means an HTTP fetch of `https://models.dev/api.json` (~2 MB) — issued with **no timeout**. A slow or black-holed connection hangs the entire commit flow indefinitely, before any spinner or model call. Separately, if the fetch *succeeds* but the cache *write* fails (read-only cache dir, full disk) and no prior cache exists, the error escapes and fails a run that had already obtained the data it needed. Three contained changes make metadata strictly best-effort: a fetch timeout, a response size cap, and a best-effort cache write.
+Every plain `zencommit` run resolves model metadata (token limits) before calling the LLM. When the on-disk cache is cold or stale, that means an HTTP fetch of `https://models.dev/api.json` (~2 MB) — issued with **no timeout**. A slow or black-holed connection hangs the entire commit flow indefinitely, before any spinner or model call. Separately, if the fetch _succeeds_ but the cache _write_ fails (read-only cache dir, full disk) and no prior cache exists, the error escapes and fails a run that had already obtained the data it needed. Three contained changes make metadata strictly best-effort: a fetch timeout, a response size cap, and a best-effort cache write.
 
 ## Current state
 
 - `src/metadata/providers/modelsdev.ts` — fetches/caches models.dev data; the relevant function is `loadModels` inside `createModelsDevProvider` (lines 109–192).
 - `src/metadata/cache.ts` — `readCache`/`writeCache`/`isCacheFresh` helpers (29 lines).
-- `src/metadata/index.ts` — `createMetadataResolver.getModel` already catches provider errors, `console.warn`s, and returns `null` (lines 49–63); `src/commands/default.ts:119-122` then falls back to conservative 8k limits with a `console.warn`. **So failures already degrade gracefully — only a *hang* is unrecoverable, and only a post-fetch write failure turns success into failure.**
+- `src/metadata/index.ts` — `createMetadataResolver.getModel` already catches provider errors, `console.warn`s, and returns `null` (lines 49–63); `src/commands/default.ts:119-122` then falls back to conservative 8k limits with a `console.warn`. **So failures already degrade gracefully — only a _hang_ is unrecoverable, and only a post-fetch write failure turns success into failure.**
 
 The fetch and write, `src/metadata/providers/modelsdev.ts:132-167`:
 
@@ -79,22 +79,24 @@ TypeScript ESM, strict; arrow-function exports; verbose logging through `logVerb
 
 ## Commands you will need
 
-| Purpose   | Command                                          | Expected on success |
-|-----------|--------------------------------------------------|---------------------|
-| Install   | `npm ci`                                         | exit 0              |
-| Typecheck | `npm run typecheck`                              | exit 0              |
-| Lint      | `npm run lint`                                   | exit 0, 0 warnings  |
-| Tests     | `npx vitest run tests/unit/metadata-runtime.test.ts` | all pass        |
-| Full gate | `npm run typecheck && npm run lint && npm test`  | all exit 0          |
+| Purpose   | Command                                              | Expected on success |
+| --------- | ---------------------------------------------------- | ------------------- |
+| Install   | `npm ci`                                             | exit 0              |
+| Typecheck | `npm run typecheck`                                  | exit 0              |
+| Lint      | `npm run lint`                                       | exit 0, 0 warnings  |
+| Tests     | `npx vitest run tests/unit/metadata-runtime.test.ts` | all pass            |
+| Full gate | `npm run typecheck && npm run lint && npm test`      | all exit 0          |
 
 ## Scope
 
 **In scope** (the only files you should modify):
+
 - `src/metadata/providers/modelsdev.ts`
 - `src/metadata/cache.ts` (only if you choose to put the best-effort wrapper there; otherwise untouched)
 - `tests/unit/metadata-runtime.test.ts`
 
 **Out of scope** (do NOT touch, even though they look related):
+
 - `src/metadata/index.ts` — its warn-and-null error handling is correct as-is.
 - `src/metadata/providers/local.ts` — local file provider, no network.
 - `src/config/*` — do not add new config options (timeout is a constant; see Step 1).
@@ -161,9 +163,9 @@ Keep `writeCache` in `src/metadata/cache.ts` itself unchanged (other callers may
 
 Extend `tests/unit/metadata-runtime.test.ts` (reuse its `withTempDir`, `modelsDevFixture`, and config-override helpers):
 
-1. **Timeout reaches the fallback**: stub global fetch with `vi.stubGlobal('fetch', vi.fn().mockRejectedValue(Object.assign(new Error('timeout'), { name: 'TimeoutError' })))`; pre-write a *stale* cache file (old mtime via `fs.utimes`); assert `getModel` returns the cached model and that fetch was called once.
+1. **Timeout reaches the fallback**: stub global fetch with `vi.stubGlobal('fetch', vi.fn().mockRejectedValue(Object.assign(new Error('timeout'), { name: 'TimeoutError' })))`; pre-write a _stale_ cache file (old mtime via `fs.utimes`); assert `getModel` returns the cached model and that fetch was called once.
 2. **Oversize response rejected**: stub fetch to resolve a `Response`-like object with `ok: true`, `headers.get('content-length')` returning `'999999999'`; with no cache present, assert `getModel` (called through `createModelsDevProvider`) rejects with a message containing `too large`.
-3. **Cache write failure does not fail the load**: stub fetch to return a valid fixture; point the cache path at an unwritable location — note the cache path is derived from `getCacheRoot()` (`src/util/fs.ts:8-9`), which honors `XDG_CACHE_HOME`; set `process.env.XDG_CACHE_HOME` to a path that is a *file*, not a directory (create a temp file), so `ensureDir` fails; assert `getModel` still resolves with the fetched model. Restore the env var in `afterEach`.
+3. **Cache write failure does not fail the load**: stub fetch to return a valid fixture; point the cache path at an unwritable location — note the cache path is derived from `getCacheRoot()` (`src/util/fs.ts:8-9`), which honors `XDG_CACHE_HOME`; set `process.env.XDG_CACHE_HOME` to a path that is a _file_, not a directory (create a temp file), so `ensureDir` fails; assert `getModel` still resolves with the fetched model. Restore the env var in `afterEach`.
 4. **Fetch call carries a signal**: assert the fetch stub was called with an options object whose `signal` is an `AbortSignal` instance.
 
 **Verify**: `npx vitest run tests/unit/metadata-runtime.test.ts` → all pass, including 4 new tests.

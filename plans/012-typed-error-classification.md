@@ -37,7 +37,9 @@ third-party SDKs.
 - `src/commands/default-flow.ts:129-156` — the classifier, string-driven:
 
   ```ts
-  export const classifyDefaultCommandError = (error: unknown): DefaultCommandErrorClassification => {
+  export const classifyDefaultCommandError = (
+    error: unknown,
+  ): DefaultCommandErrorClassification => {
     if (error instanceof ConfigLoadError) {
       return { exitCode: 2, message: error.message };
     }
@@ -58,7 +60,9 @@ third-party SDKs.
     }
 
     if (
-      /Unsupported model provider|Invalid commit message response|Model call timed out/i.test(message)
+      /Unsupported model provider|Invalid commit message response|Model call timed out/i.test(
+        message,
+      )
     ) {
       return { exitCode: 4, message };
     }
@@ -97,8 +101,7 @@ third-party SDKs.
   ```ts
   expect(classifyDefaultCommandError(new Error('Missing API key for OPENAI_API_KEY'))).toEqual({
     exitCode: 2,
-    message:
-      'Missing API key for OPENAI_API_KEY\nRun `zencommit auth login` to store credentials.',
+    message: 'Missing API key for OPENAI_API_KEY\nRun `zencommit auth login` to store credentials.',
   });
   ```
 
