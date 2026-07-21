@@ -28,7 +28,7 @@ row when done.
 | 003  | Add unit tests for the untested LLM pure layer (providers, output, prompt)        | P1       | M      | —                                | DONE   |
 | 004  | Lazy-load provider SDKs so a run only pays for the provider it uses               | P2       | M      | 003                              | DONE   |
 | 005  | Keep API keys out of process argv (keychain writes and `auth login --token`)      | P2       | M      | —                                | DONE   |
-| 006  | Harden the commit-message editor flow (cleanup, fallbacks, honest failures)       | P2       | M      | —                                | TODO   |
+| 006  | Harden the commit-message editor flow (cleanup, fallbacks, honest failures)       | P2       | M      | —                                | DONE   |
 | 007  | CI matrix, audit gate, and a fast local test loop                                 | P2       | S      | —                                | TODO   |
 | 013  | Warn when repo-supplied config redirects prompts/credentials to a custom endpoint | P2       | M      | not concurrent with 001          | TODO   |
 | 012  | Classify exit codes with typed errors instead of message regexes                  | P2       | M      | after 004 + 008                  | TODO   |
