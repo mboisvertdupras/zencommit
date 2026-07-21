@@ -7,6 +7,8 @@ describe('resolveLanguageModel', () => {
     'GOOGLE_VERTEX_PROJECT',
     'GOOGLE_VERTEX_LOCATION',
     'AZURE_RESOURCE_NAME',
+    'OPENAI_COMPATIBLE_BASE_URL',
+    'OPENAI_COMPATIBLE_NAME',
   ];
   const savedEnv: Record<string, string | undefined> = {};
 
@@ -18,6 +20,8 @@ describe('resolveLanguageModel', () => {
     process.env.GOOGLE_VERTEX_PROJECT = 'test';
     process.env.GOOGLE_VERTEX_LOCATION = 'us-central1';
     process.env.AZURE_RESOURCE_NAME = 'test';
+    delete process.env.OPENAI_COMPATIBLE_BASE_URL;
+    delete process.env.OPENAI_COMPATIBLE_NAME;
   });
 
   afterEach(() => {
@@ -70,5 +74,45 @@ describe('resolveLanguageModel', () => {
 
   it.each(['OpenAI/gpt-4o', 'Amazon-Bedrock/m'])('folds case for %s', (modelId) => {
     expect(resolveLanguageModel(modelId)).toBeTruthy();
+  });
+
+  it('rejects a model id without a slash', () => {
+    expect(() => resolveLanguageModel('gpt-4o')).toThrow(
+      'Model id must be in the format provider/model',
+    );
+  });
+
+  it('reports the raw provider id for an unsupported provider', () => {
+    expect(() => resolveLanguageModel('nope/whatever')).toThrow(
+      /Unsupported model provider: nope\. Supported providers:/,
+    );
+  });
+
+  it.each(['anthropic/claude-sonnet-4-5', 'groq/llama-3.3-70b'])(
+    'constructs a model for %s',
+    (modelId) => {
+      expect(resolveLanguageModel(modelId)).toBeTruthy();
+    },
+  );
+
+  describe('openai-compatible', () => {
+    it('throws when no base url is provided', () => {
+      expect(() => resolveLanguageModel('openai-compatible/m')).toThrow(
+        'OPENAI_COMPATIBLE_BASE_URL is required for openai-compatible models.',
+      );
+    });
+
+    it('resolves with a base url from options', () => {
+      expect(
+        resolveLanguageModel('openai-compatible/m', {
+          openaiCompatible: { baseUrl: 'https://example.test/v1', name: 'custom' },
+        }),
+      ).toBeTruthy();
+    });
+
+    it('resolves with a base url from the environment', () => {
+      process.env.OPENAI_COMPATIBLE_BASE_URL = 'https://example.test/v1';
+      expect(resolveLanguageModel('openai-compatible/m')).toBeTruthy();
+    });
   });
 });

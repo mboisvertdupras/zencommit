@@ -25,7 +25,7 @@ row when done.
 | 001  | Fix three small correctness/perf bugs in the prompt-budget path                   | P1       | S      | —                                | DONE   |
 | 002  | Make the models.dev metadata fetch unable to hang or fail a commit run            | P1       | S      | —                                | DONE   |
 | 008  | Remove provider aliases — one canonical id per provider, aligned with models.dev  | P2       | M      | —                                | DONE   |
-| 003  | Add unit tests for the untested LLM pure layer (providers, output, prompt)        | P1       | M      | —                                | TODO   |
+| 003  | Add unit tests for the untested LLM pure layer (providers, output, prompt)        | P1       | M      | —                                | DONE   |
 | 004  | Lazy-load provider SDKs so a run only pays for the provider it uses               | P2       | M      | 003                              | TODO   |
 | 005  | Keep API keys out of process argv (keychain writes and `auth login --token`)      | P2       | M      | —                                | TODO   |
 | 006  | Harden the commit-message editor flow (cleanup, fallbacks, honest failures)       | P2       | M      | —                                | TODO   |
