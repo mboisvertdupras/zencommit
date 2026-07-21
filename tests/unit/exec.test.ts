@@ -101,6 +101,21 @@ describe('exec', () => {
     });
   });
 
+  it('pipes stdin content to the child process', async () => {
+    const result = await exec([process.execPath, '-e', 'process.stdin.pipe(process.stdout);'], {
+      stdin: 'hello',
+    });
+
+    expect(result.stdout).toBe('hello');
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('does not throw when the child exits without reading stdin', async () => {
+    await expect(
+      exec([process.execPath, '-e', 'process.exit(0);'], { stdin: 'ignored' }),
+    ).resolves.toMatchObject({ exitCode: 0 });
+  });
+
   it('redacts macOS security password arguments in command displays', () => {
     const fakeToken = 'sk-secret-token-1234';
     const display = formatCommandForDisplay(
