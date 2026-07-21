@@ -34,7 +34,7 @@ row when done.
 | 012  | Classify exit codes with typed errors instead of message regexes                  | P2       | M      | after 004 + 008                  | DONE   |
 | 009  | Make README and AGENTS.md stop claiming things the code doesn't do                | P2       | S      | after 005 + 008 (README)         | DONE   |
 | 010  | Delete the orphaned root entrypoint and dead config-command code                  | P3       | S      | —                                | DONE   |
-| 011  | Enforce numeric ranges in validateConfig (temperature, cacheTtlHours)             | P3       | S      | not concurrent with 009 (README) | TODO   |
+| 011  | Enforce numeric ranges in validateConfig (temperature, cacheTtlHours)             | P3       | S      | not concurrent with 009 (README) | DONE   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
