@@ -1,5 +1,7 @@
 import { ConfigLoadError } from '../config/load.js';
 import type { CommitStyle, DiffMode, ResolvedConfig } from '../config/types.js';
+import { MissingApiKeyError, ModelTimeoutError } from '../llm/errors.js';
+import { CommitMessageOutputError } from '../llm/output.js';
 import type { PromptInput } from '../llm/prompt.js';
 import type { ModelLimits, ModelMetadata } from '../metadata/types.js';
 import { ExecError } from '../util/exec.js';
@@ -136,6 +138,17 @@ export const classifyDefaultCommandError = (error: unknown): DefaultCommandError
       exitCode: 3,
       message: error.safeStderr || error.message,
     };
+  }
+
+  if (error instanceof MissingApiKeyError) {
+    return {
+      exitCode: 2,
+      message: `${error.message}\nRun \`zencommit auth login\` to store credentials.`,
+    };
+  }
+
+  if (error instanceof ModelTimeoutError || error instanceof CommitMessageOutputError) {
+    return { exitCode: 4, message: error.message };
   }
 
   const message = error instanceof Error ? error.message : 'Unknown error.';

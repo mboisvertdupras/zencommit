@@ -9,6 +9,8 @@ import {
   parseEditedMessage,
   resolveDiffPlan,
 } from '../../src/commands/default-flow.js';
+import { MissingApiKeyError, ModelTimeoutError } from '../../src/llm/errors.js';
+import { CommitMessageOutputError } from '../../src/llm/output.js';
 import { ExecError } from '../../src/util/exec.js';
 
 const configFixture = (overrides: Partial<ResolvedConfig> = {}): ResolvedConfig => ({
@@ -145,6 +147,32 @@ describe('default command flow helpers', () => {
     ).toEqual({
       exitCode: 4,
       message: 'Unsupported model provider: internal/mock',
+    });
+  });
+
+  it('classifies typed LLM errors by instance without relying on message regexes', () => {
+    expect(classifyDefaultCommandError(new MissingApiKeyError('OPENAI_API_KEY'))).toEqual({
+      exitCode: 2,
+      message:
+        'Missing API key for OPENAI_API_KEY. Set OPENAI_API_KEY or run `zencommit auth login`.\nRun `zencommit auth login` to store credentials.',
+    });
+
+    expect(classifyDefaultCommandError(new ModelTimeoutError())).toEqual({
+      exitCode: 4,
+      message: 'Model call timed out',
+    });
+
+    expect(
+      classifyDefaultCommandError(
+        new CommitMessageOutputError(
+          'structured output',
+          'expected object with non-empty string subject and string body',
+        ),
+      ),
+    ).toEqual({
+      exitCode: 4,
+      message:
+        'Invalid commit message response during structured output: expected object with non-empty string subject and string body.',
     });
   });
 });
