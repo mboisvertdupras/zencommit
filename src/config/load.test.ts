@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ConfigLoadError, resolveConfig } from './load.js';
+import { ConfigLoadError, findSensitiveOverrides, resolveConfig } from './load.js';
+import type { ConfigSource } from './load.js';
 
 const expectConfigLoadError = async (operation: Promise<unknown>): Promise<ConfigLoadError> => {
   try {
@@ -84,6 +85,60 @@ describe('resolveConfig failure boundaries', () => {
         `Invalid custom config at ${customPath}: expected a JSON object`,
       );
     });
+  });
+});
+
+describe('findSensitiveOverrides', () => {
+  it('flags a project source that sets a custom baseUrl', () => {
+    const sources: ConfigSource[] = [
+      {
+        name: 'project',
+        data: { ai: { openaiCompatible: { baseUrl: 'https://example.com/v1' } } },
+      },
+    ];
+
+    expect(findSensitiveOverrides(sources)).toEqual([
+      { path: 'ai.openaiCompatible.baseUrl', source: 'project' },
+    ]);
+  });
+
+  it('flags an inline source that selects an openai-compatible model', () => {
+    const sources: ConfigSource[] = [
+      { name: 'inline', data: { ai: { model: 'openai-compatible/x' } } },
+    ];
+
+    expect(findSensitiveOverrides(sources)).toEqual([{ path: 'ai.model', source: 'inline' }]);
+  });
+
+  it('ignores global sources even when they set both fields', () => {
+    const sources: ConfigSource[] = [
+      {
+        name: 'global',
+        data: {
+          ai: {
+            model: 'openai-compatible/x',
+            openaiCompatible: { baseUrl: 'https://example.com/v1' },
+          },
+        },
+      },
+    ];
+
+    expect(findSensitiveOverrides(sources)).toEqual([]);
+  });
+
+  it('does not flag trusted provider model ids', () => {
+    const sources: ConfigSource[] = [{ name: 'project', data: { ai: { model: 'openai/gpt-5' } } }];
+
+    expect(findSensitiveOverrides(sources)).toEqual([]);
+  });
+
+  it('tolerates malformed shapes without throwing', () => {
+    const sources: ConfigSource[] = [
+      { name: 'project', data: { ai: 'not-an-object' } },
+      { name: 'inline', data: { ai: { openaiCompatible: null } } },
+    ];
+
+    expect(findSensitiveOverrides(sources)).toEqual([]);
   });
 });
 

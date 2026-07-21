@@ -131,29 +131,59 @@ export const loadConfigSources = async (repoRoot: string | null): Promise<Config
   return sources;
 };
 
-export const resolveConfig = async (repoRoot: string | null): Promise<ResolvedConfig> => {
-  const sources = await loadConfigSources(repoRoot);
-  return sources.reduce<ResolvedConfig>(
+export const mergeConfigSources = (sources: ConfigSource[]): ResolvedConfig =>
+  sources.reduce<ResolvedConfig>(
     (config, source) =>
       deepMerge<ResolvedConfig>(config, source.data as DeepPartial<ResolvedConfig>),
     defaultConfig,
   );
-};
 
-export const resolveConfigWithSources = async (
-  repoRoot: string | null,
-): Promise<{ config: ResolvedConfig; sourceMap: Record<string, ConfigSourceName> }> => {
-  const sources = await loadConfigSources(repoRoot);
-  let config = defaultConfig;
+export const buildSourceMap = (sources: ConfigSource[]): Record<string, ConfigSourceName> => {
   const sourceMap: Record<string, ConfigSourceName> = {};
-
   for (const source of sources) {
     const data = source.data as Record<string, unknown>;
     for (const key of Object.keys(data)) {
       sourceMap[key] = source.name;
     }
-    config = deepMerge<ResolvedConfig>(config, data as DeepPartial<ResolvedConfig>);
   }
+  return sourceMap;
+};
 
-  return { config, sourceMap };
+export const resolveConfig = async (repoRoot: string | null): Promise<ResolvedConfig> =>
+  mergeConfigSources(await loadConfigSources(repoRoot));
+
+export const resolveConfigWithSources = async (
+  repoRoot: string | null,
+): Promise<{ config: ResolvedConfig; sourceMap: Record<string, ConfigSourceName> }> => {
+  const sources = await loadConfigSources(repoRoot);
+  return { config: mergeConfigSources(sources), sourceMap: buildSourceMap(sources) };
+};
+
+export interface SensitiveOverride {
+  path: 'ai.model' | 'ai.openaiCompatible.baseUrl';
+  source: ConfigSourceName;
+}
+
+export const findSensitiveOverrides = (sources: ConfigSource[]): SensitiveOverride[] => {
+  const overrides: SensitiveOverride[] = [];
+  for (const source of sources) {
+    if (source.name !== 'project' && source.name !== 'inline') {
+      continue;
+    }
+    if (!isConfigObject(source.data)) {
+      continue;
+    }
+    const ai = source.data.ai;
+    if (!isConfigObject(ai)) {
+      continue;
+    }
+    if (typeof ai.model === 'string' && ai.model.startsWith('openai-compatible/')) {
+      overrides.push({ path: 'ai.model', source: source.name });
+    }
+    const openaiCompatible = ai.openaiCompatible;
+    if (isConfigObject(openaiCompatible) && openaiCompatible.baseUrl !== undefined) {
+      overrides.push({ path: 'ai.openaiCompatible.baseUrl', source: source.name });
+    }
+  }
+  return overrides;
 };
