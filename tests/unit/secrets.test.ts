@@ -5,6 +5,7 @@ import {
   getSecret,
   MacOsKeychainSecretStore,
   resetSecretStoreForTesting,
+  resolveProviderAuth,
   resolveRuntimeSecrets,
   SecretStoreUnavailableError,
   setSecret,
@@ -153,6 +154,18 @@ describe('secrets adapter', () => {
     await expect(setSecret('OPENAI_API_KEY', 'ignored')).rejects.toThrow(
       SecretStoreUnavailableError,
     );
+  });
+
+  it('resolves auth by renamed canonical id', () => {
+    expect(resolveProviderAuth('amazon-bedrock/some-model')?.name).toBe('Amazon Bedrock');
+  });
+
+  it('rejects old canonical id after rename', () => {
+    expect(resolveProviderAuth('bedrock/some-model')).toBeNull();
+  });
+
+  it('rejects deleted alias spelling', () => {
+    expect(resolveProviderAuth('gemini/some-model')).toBeNull();
   });
 
   it('redacts macOS keychain password arguments when storing secrets', async () => {
