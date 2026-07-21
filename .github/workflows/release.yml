@@ -70,8 +70,8 @@ jobs:
         with:
           node-version: '22.14.0'
           cache: 'npm'
-      # Keep npm current so trusted publishing and provenance flows stay compatible.
-      - run: npm install -g npm@latest
+      # Trusted publishing needs npm >= 11.5.1; npm 12 dropped support for node 22.14.
+      - run: npm install -g npm@11
       - run: npm ci
       - name: Verify tag matches package.json version
         run: |
