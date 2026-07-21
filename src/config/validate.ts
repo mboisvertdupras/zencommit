@@ -34,8 +34,8 @@ export const validateConfig = (config: ResolvedConfig): ValidationResult => {
   if (!isString(config.ai.model) || config.ai.model.trim().length === 0) {
     addError(errors, 'ai.model', 'Model must be a non-empty string.');
   }
-  if (!isNumber(config.ai.temperature)) {
-    addError(errors, 'ai.temperature', 'Temperature must be a number.');
+  if (!isNumber(config.ai.temperature) || config.ai.temperature < 0 || config.ai.temperature > 2) {
+    addError(errors, 'ai.temperature', 'Temperature must be a number between 0 and 2.');
   }
   if (!isNumber(config.ai.maxOutputTokens) || config.ai.maxOutputTokens <= 0) {
     addError(errors, 'ai.maxOutputTokens', 'Max output tokens must be a positive number.');
@@ -121,11 +121,15 @@ export const validateConfig = (config: ResolvedConfig): ValidationResult => {
   if (!isString(config.metadata.providers.modelsdev.url)) {
     addError(errors, 'metadata.providers.modelsdev.url', 'modelsdev url must be a string.');
   }
-  if (!isNumber(config.metadata.providers.modelsdev.cacheTtlHours)) {
+  if (
+    !isNumber(config.metadata.providers.modelsdev.cacheTtlHours) ||
+    !Number.isFinite(config.metadata.providers.modelsdev.cacheTtlHours) ||
+    config.metadata.providers.modelsdev.cacheTtlHours < 0
+  ) {
     addError(
       errors,
       'metadata.providers.modelsdev.cacheTtlHours',
-      'cacheTtlHours must be a number.',
+      'cacheTtlHours must be a non-negative number.',
     );
   }
   if (!isString(config.metadata.providers.local.path)) {

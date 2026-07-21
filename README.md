@@ -254,13 +254,13 @@ zencommit config validate
 
 #### AI Settings (`ai`)
 
-| Option             | Type   | Default          | Description                              |
-| ------------------ | ------ | ---------------- | ---------------------------------------- |
-| `model`            | string | `"openai/gpt-5"` | Model ID in `provider/model` format      |
-| `temperature`      | number | `0.2`            | Sampling temperature (0-1)               |
-| `maxOutputTokens`  | number | `4096`           | Maximum tokens in response               |
-| `timeoutMs`        | number | `20000`          | Request timeout in milliseconds          |
-| `openaiCompatible` | object | -                | Settings for OpenAI-compatible providers |
+| Option             | Type   | Default          | Description                                    |
+| ------------------ | ------ | ---------------- | ---------------------------------------------- |
+| `model`            | string | `"openai/gpt-5"` | Model ID in `provider/model` format            |
+| `temperature`      | number | `0.2`            | Sampling temperature (0-2, provider-dependent) |
+| `maxOutputTokens`  | number | `4096`           | Maximum tokens in response                     |
+| `timeoutMs`        | number | `20000`          | Request timeout in milliseconds                |
+| `openaiCompatible` | object | -                | Settings for OpenAI-compatible providers       |
 
 #### Commit Settings (`commit`)
 
