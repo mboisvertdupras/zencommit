@@ -241,21 +241,12 @@ export class MacOsKeychainSecretStore implements SecretStore {
 
   async set(envKey: string, value: string): Promise<void> {
     this.assertSupportedPlatform();
-    const command = [
-      'security',
-      'add-generic-password',
-      '-U',
-      '-s',
-      this.service,
-      '-a',
-      envKey,
-      '-w',
-      value,
-    ];
+    const quoted = `'${value.replaceAll("'", "'\\''")}'`;
+    const line = `add-generic-password -U -s ${this.service} -a ${envKey} -w ${quoted}\n`;
     try {
-      await this.runner(command, {
+      await this.runner(['security', '-i'], {
         operation: `macOS Keychain store ${envKey}`,
-        redactedArgs: [command.length - 1],
+        stdin: line,
       });
     } catch (error) {
       throw toKeychainFailureError('store', envKey, error);

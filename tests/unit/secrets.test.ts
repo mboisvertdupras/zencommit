@@ -168,32 +168,41 @@ describe('secrets adapter', () => {
     expect(resolveProviderAuth('gemini/some-model')).toBeNull();
   });
 
-  it('redacts macOS keychain password arguments when storing secrets', async () => {
+  it('keeps the secret out of argv by passing it through stdin', async () => {
     usePlatform('darwin');
     const fakeToken = 'sk-secret-token-1234';
     let capturedCommand: string[] | null = null;
-    let capturedRedactedArgs: number[] = [];
+    let capturedStdin: string | undefined;
     const runner: ExecRunner = (command, options = {}) => {
       capturedCommand = command;
-      capturedRedactedArgs = options.redactedArgs ?? [];
+      capturedStdin = options.stdin;
       return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
     };
 
     const store = new MacOsKeychainSecretStore('zencommit-test', runner);
     await store.set('OPENAI_API_KEY', fakeToken);
 
-    expect(capturedCommand).toEqual([
-      'security',
-      'add-generic-password',
-      '-U',
-      '-s',
-      'zencommit-test',
-      '-a',
-      'OPENAI_API_KEY',
-      '-w',
-      fakeToken,
-    ]);
-    expect(capturedRedactedArgs).toEqual([8]);
+    expect(capturedCommand).toEqual(['security', '-i']);
+    expect(capturedStdin).toContain('add-generic-password');
+    expect(capturedStdin).toContain(fakeToken);
+    expect((capturedCommand as string[] | null)?.join(' ')).not.toContain(fakeToken);
+  });
+
+  it('single-quotes the secret in the stdin line, escaping embedded quotes', async () => {
+    usePlatform('darwin');
+    const fakeToken = "ab'c \\ d";
+    let capturedStdin: string | undefined;
+    const runner: ExecRunner = (_command, options = {}) => {
+      capturedStdin = options.stdin;
+      return Promise.resolve({ stdout: '', stderr: '', exitCode: 0 });
+    };
+
+    const store = new MacOsKeychainSecretStore('zencommit-test', runner);
+    await store.set('OPENAI_API_KEY', fakeToken);
+
+    expect(capturedStdin).toBe(
+      "add-generic-password -U -s zencommit-test -a OPENAI_API_KEY -w 'ab'\\''c \\ d'\n",
+    );
   });
 
   it('treats missing macOS keychain entries as absent secrets', async () => {

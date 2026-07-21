@@ -144,6 +144,7 @@ export interface ExecOptions {
   redactedArgs?: number[];
   redactStdout?: boolean;
   redactStderr?: boolean;
+  stdin?: string;
 }
 
 export interface ExecResult {
@@ -209,11 +210,18 @@ const runCommand = (
   }
 
   return new Promise((resolve, reject) => {
-    const proc = spawn(file, args, {
-      cwd: options.cwd,
-      env: options.env ? { ...process.env, ...options.env } : process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const proc =
+      options.stdin !== undefined
+        ? spawn(file, args, {
+            cwd: options.cwd,
+            env: options.env ? { ...process.env, ...options.env } : process.env,
+            stdio: ['pipe', 'pipe', 'pipe'],
+          })
+        : spawn(file, args, {
+            cwd: options.cwd,
+            env: options.env ? { ...process.env, ...options.env } : process.env,
+            stdio: ['ignore', 'pipe', 'pipe'],
+          });
 
     let stdout = '';
     let stderr = '';
@@ -229,6 +237,11 @@ const runCommand = (
     proc.stderr.on('data', (chunk: string) => {
       stderr += chunk;
     });
+
+    if (options.stdin !== undefined) {
+      proc.stdin!.on('error', () => {});
+      proc.stdin!.end(options.stdin);
+    }
 
     proc.on('error', (error) => {
       if (settled) {

@@ -133,7 +133,10 @@ Manage API keys with the `auth` command. Keys are stored via the secure-store ba
 # Interactive login
 zencommit auth login
 
-# Non-interactive login with a placeholder token value
+# Non-interactive login (recommended): pipe the secret via stdin
+echo "$MY_KEY" | zencommit auth login --env-key OPENAI_API_KEY --token-stdin
+
+# Non-interactive login with a token value on the command line
 zencommit auth login --env-key OPENAI_API_KEY --token <token>
 
 # Remove stored key
@@ -142,6 +145,8 @@ zencommit auth logout --env-key OPENAI_API_KEY
 # Check authentication status
 zencommit auth status
 ```
+
+Prefer `--token-stdin` for scripting: passing `--token <token>` exposes the secret to your shell history and to other local processes via the process listing.
 
 ### Supported Environment Variables
 

@@ -22,6 +22,7 @@ type DefaultArgs = {
 type AuthArgs = {
   'env-key'?: string;
   token?: string;
+  'token-stdin'?: boolean;
 };
 
 type ModelsSearchArgs = {
@@ -120,10 +121,19 @@ const cli = (yargs(hideBin(process.argv)) as Argv<DefaultArgs>)
           (sub: Argv<AuthArgs>) =>
             sub
               .option('env-key', { type: 'string', describe: 'Environment key name' })
-              .option('token', { type: 'string', describe: 'Secret token value' }),
+              .option('token', { type: 'string', describe: 'Secret token value' })
+              .option('token-stdin', {
+                type: 'boolean',
+                default: false,
+                describe: 'Read the secret token from stdin',
+              }),
           async (argv: AuthArgs) => {
             const { runAuthLogin } = await import('./commands/auth.js');
-            await runAuthLogin({ envKey: argv['env-key'], token: argv.token });
+            await runAuthLogin({
+              envKey: argv['env-key'],
+              token: argv.token,
+              tokenStdin: argv['token-stdin'],
+            });
           },
         )
         .command(

@@ -17,6 +17,7 @@ import { resolveLanguageModel } from '../llm/providers.js';
 interface AuthArgs {
   envKey?: string;
   token?: string;
+  tokenStdin?: boolean;
 }
 
 const validateEnvKey = (envKey: string): void => {
@@ -61,6 +62,21 @@ const verifyCredentials = async (
   }
 };
 
+const resolveToken = async (args: AuthArgs, envKey: string): Promise<string | null | undefined> => {
+  if (args.token !== undefined) {
+    return args.token;
+  }
+  if (args.tokenStdin) {
+    const token = (await new Response(process.stdin).text()).trim();
+    if (!token) {
+      console.error('No token received on stdin.');
+      process.exit(2);
+    }
+    return token;
+  }
+  return promptForSecret(envKey);
+};
+
 export const runAuthLogin = async (args: AuthArgs): Promise<void> => {
   const envKey = args.envKey ?? (await selectProviderKey());
   if (!envKey) {
@@ -74,7 +90,7 @@ export const runAuthLogin = async (args: AuthArgs): Promise<void> => {
     process.exit(2);
   }
 
-  const token = args.token ?? (await promptForSecret(envKey));
+  const token = await resolveToken(args, envKey);
   if (!token) {
     process.exit(0);
   }
