@@ -7,8 +7,20 @@ import { redactObject } from '../util/redact.js';
 import { logVerbose } from '../util/logger.js';
 import path from 'node:path';
 
-export const runConfigPrint = async (): Promise<void> => {
+const withConfigErrorHandling = async (run: () => Promise<void>): Promise<void> => {
   try {
+    await run();
+  } catch (error) {
+    if (error instanceof ConfigLoadError) {
+      console.error(error.message);
+      process.exit(2);
+    }
+    throw error;
+  }
+};
+
+export const runConfigPrint = async (): Promise<void> =>
+  withConfigErrorHandling(async () => {
     const repoRoot = await getRepoRoot();
     logVerbose(1, `config print: repo root ${repoRoot ?? 'unknown'}`);
     const { config, sourceMap } = await resolveConfigWithSources(repoRoot);
@@ -18,14 +30,7 @@ export const runConfigPrint = async (): Promise<void> => {
     for (const [key, source] of Object.entries(sourceMap)) {
       console.log(`${key}: ${source}`);
     }
-  } catch (error) {
-    if (error instanceof ConfigLoadError) {
-      console.error(error.message);
-      process.exit(2);
-    }
-    throw error;
-  }
-};
+  });
 
 export const runConfigInit = async (): Promise<void> => {
   const repoRoot = await getRepoRoot();
@@ -43,8 +48,8 @@ export const runConfigInit = async (): Promise<void> => {
   console.log(`Wrote ${configPath}`);
 };
 
-export const runConfigValidate = async (): Promise<void> => {
-  try {
+export const runConfigValidate = async (): Promise<void> =>
+  withConfigErrorHandling(async () => {
     const repoRoot = await getRepoRoot();
     logVerbose(1, `config validate: repo root ${repoRoot ?? 'unknown'}`);
     const config = await resolveConfig(repoRoot);
@@ -58,26 +63,4 @@ export const runConfigValidate = async (): Promise<void> => {
       console.error(`- ${error.path}: ${error.message}`);
     }
     process.exit(2);
-  } catch (error) {
-    if (error instanceof ConfigLoadError) {
-      console.error(error.message);
-      process.exit(2);
-    }
-    throw error;
-  }
-};
-
-export const runConfigShowResolved = async (): Promise<void> => {
-  try {
-    const repoRoot = await getRepoRoot();
-    const config = await resolveConfig(repoRoot);
-    const redacted = redactObject(config);
-    console.log(JSON.stringify(redacted, null, 2));
-  } catch (error) {
-    if (error instanceof ConfigLoadError) {
-      console.error(error.message);
-      process.exit(2);
-    }
-    throw error;
-  }
-};
+  });

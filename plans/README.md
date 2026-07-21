@@ -33,7 +33,7 @@ row when done.
 | 013  | Warn when repo-supplied config redirects prompts/credentials to a custom endpoint | P2       | M      | not concurrent with 001          | DONE   |
 | 012  | Classify exit codes with typed errors instead of message regexes                  | P2       | M      | after 004 + 008                  | DONE   |
 | 009  | Make README and AGENTS.md stop claiming things the code doesn't do                | P2       | S      | after 005 + 008 (README)         | DONE   |
-| 010  | Delete the orphaned root entrypoint and dead config-command code                  | P3       | S      | —                                | TODO   |
+| 010  | Delete the orphaned root entrypoint and dead config-command code                  | P3       | S      | —                                | DONE   |
 | 011  | Enforce numeric ranges in validateConfig (temperature, cacheTtlHours)             | P3       | S      | not concurrent with 009 (README) | TODO   |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
