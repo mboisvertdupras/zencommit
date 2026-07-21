@@ -8,6 +8,7 @@ import {
   type CommitMessage,
 } from './output.js';
 import { resolveLanguageModel } from './providers.js';
+import { MissingApiKeyError, ModelTimeoutError } from './errors.js';
 import type { ModelCapabilities } from '../metadata/types.js';
 
 export type { CommitMessage } from './output.js';
@@ -42,8 +43,6 @@ const COMMIT_SCHEMA = jsonSchema<CommitMessage>({
   additionalProperties: false,
 });
 
-const MODEL_TIMEOUT_MESSAGE = 'Model call timed out';
-
 const buildTimeoutSignal = (timeoutMs: number): AbortSignal | undefined => {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     return undefined;
@@ -66,14 +65,13 @@ const withModelTimeout = async <T>(
     return await run(buildTimeoutSignal(timeoutMs));
   } catch (error) {
     if (isAbortError(error)) {
-      throw new Error(MODEL_TIMEOUT_MESSAGE);
+      throw new ModelTimeoutError();
     }
     throw error;
   }
 };
 
-const isModelTimeoutError = (error: unknown): boolean =>
-  error instanceof Error && error.message === MODEL_TIMEOUT_MESSAGE;
+const isModelTimeoutError = (error: unknown): boolean => error instanceof ModelTimeoutError;
 
 const isProviderAuthError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
@@ -111,9 +109,7 @@ const ensureAuth = async (modelId: string): Promise<void> => {
   }
   if (auth.required && foundKeys.length === 0) {
     const primary = auth.primaryEnvKey ?? auth.envKeys[0] ?? auth.id;
-    throw new Error(
-      `Missing API key for ${primary}. Set ${primary} or run \`zencommit auth login\`.`,
-    );
+    throw new MissingApiKeyError(primary);
   }
 };
 
