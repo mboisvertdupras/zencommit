@@ -10,6 +10,9 @@ type ModelsDevMetadataProvider = MetadataProvider & {
   refresh(): Promise<void>;
 };
 
+const FETCH_TIMEOUT_MS = 10_000;
+const MAX_RESPONSE_BYTES = 20 * 1024 * 1024;
+
 const toNumberOrNull = (value: unknown): number | null => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
@@ -133,9 +136,17 @@ export const createModelsDevProvider = (config: MetadataConfig): ModelsDevMetada
       if (getVerbosity() >= 1) {
         logVerbose(1, `metadata: fetching ${config.providers.modelsdev.url}`);
       }
-      const response = await fetch(config.providers.modelsdev.url);
+      const response = await fetch(config.providers.modelsdev.url, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
       if (!response.ok) {
         throw new Error(`models.dev responded with ${response.status}`);
+      }
+      const contentLength = Number(response.headers.get('content-length'));
+      if (Number.isFinite(contentLength) && contentLength > MAX_RESPONSE_BYTES) {
+        throw new Error(
+          `models.dev response too large (${contentLength} bytes) from ${config.providers.modelsdev.url}`,
+        );
       }
       let data: unknown;
       try {
@@ -146,8 +157,12 @@ export const createModelsDevProvider = (config: MetadataConfig): ModelsDevMetada
         );
       }
       cachedModels = requireUsableModelsDevData(data, config.providers.modelsdev.url);
-      await writeCache(cachePath, data);
-      logVerbose(2, `metadata: cache write ${cachePath}`);
+      try {
+        await writeCache(cachePath, data);
+        logVerbose(2, `metadata: cache write ${cachePath}`);
+      } catch (error) {
+        logVerbose(1, `metadata: cache write failed for ${cachePath}: ${(error as Error).message}`);
+      }
       return cachedModels;
     } catch (error) {
       if (cache) {
