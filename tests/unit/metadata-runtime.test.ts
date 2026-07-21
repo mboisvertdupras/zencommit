@@ -161,6 +161,7 @@ describe('models.dev metadata provider failure boundaries', () => {
         vi.fn(() =>
           Promise.resolve({
             ok: true,
+            headers: { get: () => null },
             json: () =>
               Promise.reject(new SyntaxError('Unexpected token s in JSON at position 14')),
           }),
@@ -184,7 +185,11 @@ describe('models.dev metadata provider failure boundaries', () => {
       vi.stubGlobal(
         'fetch',
         vi.fn(() =>
-          Promise.resolve({ ok: true, json: () => Promise.resolve({ provider: { models: {} } }) }),
+          Promise.resolve({
+            ok: true,
+            headers: { get: () => null },
+            json: () => Promise.resolve({ provider: { models: {} } }),
+          }),
         ),
       );
       const provider = createModelsDevProvider(
@@ -208,6 +213,7 @@ describe('models.dev metadata provider failure boundaries', () => {
         vi.fn(() =>
           Promise.resolve({
             ok: true,
+            headers: { get: () => null },
             json: () => Promise.resolve(modelsDevFixture('anthropic', 'claude-4')),
           }),
         ),
@@ -218,6 +224,102 @@ describe('models.dev metadata provider failure boundaries', () => {
         expect.arrayContaining([expect.objectContaining({ id: 'anthropic/claude-4' })]),
       );
       await expect(fs.readFile(cachePath, 'utf8')).resolves.toContain('claude-4');
+    });
+  });
+
+  it('falls back to stale cache when the fetch times out', async () => {
+    await withTempDir(async (dir) => {
+      const cacheRoot = path.join(dir, 'cache');
+      process.env.XDG_CACHE_HOME = cacheRoot;
+      const cachePath = path.join(cacheRoot, 'zencommit', 'metadata', 'modelsdev.cache.json');
+      await writeFile(cachePath, JSON.stringify(modelsDevFixture('openai', 'gpt-4o')));
+      const stale = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      await fs.utimes(cachePath, stale, stale);
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const fetchStub = vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('timeout'), { name: 'TimeoutError' }));
+      vi.stubGlobal('fetch', fetchStub);
+      const provider = createModelsDevProvider(
+        metadataConfig({ providers: { modelsdev: { cacheTtlHours: 1 } } }),
+      );
+
+      await expect(provider.getModel('openai/gpt-4o')).resolves.toMatchObject({
+        id: 'openai/gpt-4o',
+      });
+      expect(fetchStub).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('rejects an oversize models.dev response when no cache exists', async () => {
+    await withTempDir(async (dir) => {
+      process.env.XDG_CACHE_HOME = path.join(dir, 'cache');
+      const url = 'https://example.test/models.json';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            headers: { get: () => '999999999' },
+            json: () => Promise.resolve(modelsDevFixture('openai', 'gpt-5')),
+          }),
+        ),
+      );
+      const provider = createModelsDevProvider(
+        metadataConfig({ providers: { modelsdev: { url, cacheTtlHours: 24 } } }),
+      );
+
+      const error = await expectMetadataError(provider.getModel('openai/gpt-5'));
+      expect(error.message).toContain('too large');
+    });
+  });
+
+  it('resolves the fetched model even when the cache write fails', async () => {
+    await withTempDir(async (dir) => {
+      const cacheFile = path.join(dir, 'not-a-dir');
+      await fs.writeFile(cacheFile, 'blocker', 'utf8');
+      process.env.XDG_CACHE_HOME = cacheFile;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            headers: { get: () => null },
+            json: () => Promise.resolve(modelsDevFixture('anthropic', 'claude-4')),
+          }),
+        ),
+      );
+      const provider = createModelsDevProvider(metadataConfig());
+
+      await expect(provider.getModel('anthropic/claude-4')).resolves.toMatchObject({
+        id: 'anthropic/claude-4',
+      });
+    });
+  });
+
+  it('passes an AbortSignal to the models.dev fetch', async () => {
+    await withTempDir(async (dir) => {
+      process.env.XDG_CACHE_HOME = path.join(dir, 'cache');
+      const url = 'https://example.test/models.json';
+      const fetchStub = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          headers: { get: () => null },
+          json: () => Promise.resolve(modelsDevFixture('openai', 'gpt-5')),
+        }),
+      );
+      vi.stubGlobal('fetch', fetchStub);
+      const provider = createModelsDevProvider(
+        metadataConfig({ providers: { modelsdev: { url, cacheTtlHours: 24 } } }),
+      );
+
+      await provider.getModel('openai/gpt-5');
+
+      expect(fetchStub).toHaveBeenCalledTimes(1);
+      const options = (fetchStub.mock.calls[0] as unknown[])?.[1] as
+        | { signal?: unknown }
+        | undefined;
+      expect(options?.signal).toBeInstanceOf(AbortSignal);
     });
   });
 
