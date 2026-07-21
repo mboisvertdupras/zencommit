@@ -85,21 +85,23 @@ TypeScript ESM strict, arrow-function exports, kebab-case files, Prettier + oxli
 
 ## Commands you will need
 
-| Purpose   | Command                                          | Expected on success |
-|-----------|--------------------------------------------------|---------------------|
-| Install   | `npm ci`                                         | exit 0              |
-| Typecheck | `npm run typecheck`                              | exit 0              |
-| Lint      | `npm run lint`                                   | exit 0, 0 warnings  |
-| Tests     | `npx vitest run tests/unit/editor.test.ts`       | all pass            |
-| Full gate | `npm run typecheck && npm run lint && npm test`  | all exit 0          |
+| Purpose   | Command                                         | Expected on success |
+| --------- | ----------------------------------------------- | ------------------- |
+| Install   | `npm ci`                                        | exit 0              |
+| Typecheck | `npm run typecheck`                             | exit 0              |
+| Lint      | `npm run lint`                                  | exit 0, 0 warnings  |
+| Tests     | `npx vitest run tests/unit/editor.test.ts`      | all pass            |
+| Full gate | `npm run typecheck && npm run lint && npm test` | all exit 0          |
 
 ## Scope
 
 **In scope** (the only files you should modify/create):
+
 - `src/ui/editor.ts`
 - `tests/unit/editor.test.ts` (create)
 
 **Out of scope** (do NOT touch, even though they look related):
+
 - `src/commands/default.ts` — the call site and its contract stay as-is.
 - `src/util/exec.ts` — `openEditor` intentionally uses raw `spawn` with `stdio: 'inherit'` (the editor needs the TTY); do not route it through `exec()`.
 - Falling back to `git config core.editor` / `git var GIT_EDITOR` — deliberately deferred (couples `ui/` to `git/`); listed in maintenance notes.
@@ -138,7 +140,7 @@ Rewrite the body preserving the signature `(initialText: string): Promise<string
 
 1. Resolution order: `process.env.VISUAL || process.env.EDITOR`. If neither is set (or tokenizes to empty), `console.warn('No editor configured. Set VISUAL or EDITOR to edit the message; keeping the generated one.');` and return `initialText`.
 2. Wrap everything after `mkdtemp` in `try { … } finally { await fs.rm(tempDir, { recursive: true, force: true }); }` so the temp dir is removed on every path (success, non-zero exit, read failure).
-3. On non-zero editor exit: `console.warn(\`Editor exited with code ${exitCode}; keeping the original message.\`);` and return `initialText` (from inside the `try`, before the `finally` cleanup runs).
+3. On non-zero editor exit: `console.warn(\`Editor exited with code ${exitCode}; keeping the original message.\`);`and return`initialText`(from inside the`try`, before the `finally` cleanup runs).
 4. Use `tokenizeEditorCommand` instead of `editor.split(' ')`.
 5. Keep `runEditor` as-is (its resolve-with-1-on-error shape already maps spawn failure to the "keep original" path — but add the same `console.warn` for that case by checking the exit code as in (3); spawn-error and non-zero-exit can share the warning).
 

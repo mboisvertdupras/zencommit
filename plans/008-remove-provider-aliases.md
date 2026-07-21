@@ -24,7 +24,7 @@
 - **Risk**: MED (breaking change to accepted model-id strings)
 - **Depends on**: none (see "Interaction with plans 003/004" below for ordering)
 - **Category**: tech-debt
-- **Planned at**: commit `cd2908e`, 2026-06-10 (promoted from the plans/README.md backlog item "Provider alias registry divergence"; approach changed by maintainer decision from *consolidate the registries* to *remove aliases entirely*)
+- **Planned at**: commit `cd2908e`, 2026-06-10 (promoted from the plans/README.md backlog item "Provider alias registry divergence"; approach changed by maintainer decision from _consolidate the registries_ to _remove aliases entirely_)
 
 ## Why this matters
 
@@ -38,11 +38,11 @@ This is a **breaking change** for users whose configs use an alias or one of the
 
 Three canonical ids are **renamed** to models.dev's ids (verified against the models.dev dataset: `amazon-bedrock`, `google-vertex`, `google-vertex-anthropic` all exist as provider keys there; short `bedrock`/`vertex` do not):
 
-| Old canonical | New canonical | models.dev metadata |
-|---|---|---|
-| `bedrock` | `amazon-bedrock` | now matches |
-| `vertex` | `google-vertex` | now matches |
-| `vertex-anthropic` | `google-vertex-anthropic` | now matches |
+| Old canonical      | New canonical             | models.dev metadata |
+| ------------------ | ------------------------- | ------------------- |
+| `bedrock`          | `amazon-bedrock`          | now matches         |
+| `vertex`           | `google-vertex`           | now matches         |
+| `vertex-anthropic` | `google-vertex-anthropic` | now matches         |
 
 All other canonical ids stay as-is (`openai`, `anthropic`, `google`, `xai`, `vercel`, `azure`, `groq`, `deepinfra`, `mistral`, `togetherai`, `cohere`, `cerebras`, `perplexity`, `gateway`, `openrouter`, `gitlab`, `openai-compatible`) — each already matches its models.dev key, except `gateway` and `openai-compatible`, which have no models.dev entry by nature (meta-providers) and keep their existing conservative-limits behavior.
 
@@ -51,11 +51,11 @@ Two distinct kinds of spelling stop working — keep them straight (the success/
 - **Renamed canonical ids** (3): `bedrock`, `vertex`, `vertex-anthropic` — rejected after this plan because the canonical key itself changed (use the new name from the table above).
 - **Deleted alias spellings** (13): `azure-openai`, `aws-bedrock`, `google-vertex-ai`, `google-generative-ai`, `gemini`, `open-router`, `gitlab-ai`, `gitlab-duo`, `together.ai`, `xai-grok`, `vercel-ai-gateway`, `ai-gateway`, plus secrets.ts-only `grok` — rejected because aliasing is removed.
 
-(`amazon-bedrock`, `google-vertex`, `google-vertex-anthropic` appear in today's alias table too — they stop being *aliases* and become the *canonical* names, so they are **accepted** post-change and belong in the success tests, never the rejection tests.)
+(`amazon-bedrock`, `google-vertex`, `google-vertex-anthropic` appear in today's alias table too — they stop being _aliases_ and become the _canonical_ names, so they are **accepted** post-change and belong in the success tests, never the rejection tests.)
 
 ### `src/llm/providers.ts` (102 lines)
 
-- Lines 23–43 — `PROVIDER_FACTORIES`: keys include `bedrock: (modelName) => bedrock(modelName)`, `vertex: (modelName) => vertex(modelName)`, `'vertex-anthropic': (modelName) => vertexAnthropic(modelName)` (the import names `bedrock`/`vertex`/`vertexAnthropic` from `@ai-sdk/amazon-bedrock`, `@ai-sdk/google-vertex`, `@ai-sdk/google-vertex/anthropic` stay — only the *keys* change).
+- Lines 23–43 — `PROVIDER_FACTORIES`: keys include `bedrock: (modelName) => bedrock(modelName)`, `vertex: (modelName) => vertex(modelName)`, `'vertex-anthropic': (modelName) => vertexAnthropic(modelName)` (the import names `bedrock`/`vertex`/`vertexAnthropic` from `@ai-sdk/amazon-bedrock`, `@ai-sdk/google-vertex`, `@ai-sdk/google-vertex/anthropic` stay — only the _keys_ change).
 - Lines 45–65 — `PROVIDER_ALIASES: Record<string, string>` (19 entries, 4 of which are no-op identity self-mappings: `'vertex-anthropic'`, `'openai-compatible'`, `openrouter`, `gitlab`). **Delete whole table.**
 - Lines 67–68:
 
@@ -101,17 +101,18 @@ TypeScript ESM strict, arrow-function exports, Prettier + oxlint zero warnings, 
 
 ## Commands you will need
 
-| Purpose   | Command                                              | Expected on success |
-|-----------|------------------------------------------------------|---------------------|
-| Install   | `npm ci`                                             | exit 0              |
-| Typecheck | `npm run typecheck`                                  | exit 0              |
-| Lint      | `npm run lint`                                       | exit 0, 0 warnings  |
-| Tests     | `npx vitest run`                                     | all pass            |
-| Full gate | `npm run typecheck && npm run lint && npm run format:check && npm test` | all exit 0 |
+| Purpose   | Command                                                                 | Expected on success |
+| --------- | ----------------------------------------------------------------------- | ------------------- |
+| Install   | `npm ci`                                                                | exit 0              |
+| Typecheck | `npm run typecheck`                                                     | exit 0              |
+| Lint      | `npm run lint`                                                          | exit 0, 0 warnings  |
+| Tests     | `npx vitest run`                                                        | all pass            |
+| Full gate | `npm run typecheck && npm run lint && npm run format:check && npm test` | all exit 0          |
 
 ## Scope
 
 **In scope** (the only files you should modify/create):
+
 - `src/llm/providers.ts`
 - `src/auth/secrets.ts`
 - `src/llm/providers.test.ts` (create if absent, update if plan 003 already created it)
@@ -119,8 +120,9 @@ TypeScript ESM strict, arrow-function exports, Prettier + oxlint zero warnings, 
 - `README.md` (provider table + alias section)
 
 **Out of scope** (do NOT touch, even though they look related):
+
 - `ENV_KEY_ALIASES` / `GEMINI_API_KEY` env fallback in `src/auth/secrets.ts:153-155` and its README env-table row — env-var fallback, not a provider alias.
-- `src/metadata/**` — exact-id matching is now the *correct* behavior everywhere; nothing to change.
+- `src/metadata/**` — exact-id matching is now the _correct_ behavior everywhere; nothing to change.
 - `src/commands/models.ts` — already operates on models.dev ids; benefits automatically.
 - Case sensitivity: **keep** the existing `.toLowerCase()` folding in both lookup paths — case folding is normalization, not aliasing, and removing it would break differently-cased configs for no clarity gain.
 - `package.json` version field / changelog — release mechanics are the maintainer's (but see Git workflow for the breaking-change marker).
@@ -180,6 +182,7 @@ const PROVIDER_AUTH_INDEX: Map<string, ProviderAuthConfig> = new Map(
 (`resolveProviderAuth` keeps its `.toLowerCase()` at line 384, and every `config.id` is already lowercase.)
 
 **Verify**:
+
 - `npm run typecheck` → exit 0
 - `grep -n 'providerIds' src/auth/secrets.ts` → no output
 - `grep -n "id: 'bedrock'\|id: 'vertex'\|id: 'vertex-anthropic'" src/auth/secrets.ts` → no output; `grep -c "id: '" src/auth/secrets.ts` → 20 (same count as before — renames, not deletions)
@@ -195,7 +198,7 @@ First determine the branch: `test -f src/llm/providers.test.ts && echo exists ||
 Either way, the file must cover (one `describe`, three `it.each`-driven groups):
 
 1. **Success — canonical ids** (includes the three renames): `resolveLanguageModel('amazon-bedrock/anthropic.claude-3-5-sonnet')`, `('google-vertex/gemini-2.0-flash')`, `('google-vertex-anthropic/claude-sonnet-4-20250514')`, `('openai/gpt-4o')` succeed (truthy, no throw). If a factory throws at construction for missing env, first stub dummy env vars in `beforeEach` (`AWS_REGION=us-east-1`, `GOOGLE_VERTEX_PROJECT=test`, `GOOGLE_VERTEX_LOCATION=us-central1`, `AZURE_RESOURCE_NAME=test`); if one still can't construct hermetically, mock that single package with `vi.mock` and a one-line comment.
-2. **Rejection — old canonical ids (renamed)**: `it.each(['bedrock', 'vertex', 'vertex-anthropic'])` → `resolveLanguageModel(\`${p}/m\`)` throws with message containing both `Unsupported model provider: ${p}` and `Supported providers:`.
+2. **Rejection — old canonical ids (renamed)**: `it.each(['bedrock', 'vertex', 'vertex-anthropic'])` → `resolveLanguageModel(\`${p}/m\`)`throws with message containing both`Unsupported model provider: ${p}`and`Supported providers:`.
 3. **Rejection — deleted alias spellings**: `it.each(['aws-bedrock', 'google-vertex-ai', 'gemini', 'google-generative-ai', 'azure-openai', 'together.ai', 'xai-grok', 'grok', 'open-router', 'vercel-ai-gateway', 'ai-gateway', 'gitlab-ai', 'gitlab-duo'])` → same assertion as group 2.
 4. **Case folding survives**: `'OpenAI/gpt-4o'` and `'Amazon-Bedrock/m'` succeed.
 
@@ -219,6 +222,7 @@ Note: if plan 004 already landed, `resolveLanguageModel` is async — use `await
 ### Step 5: Full gate and smoke
 
 **Verify**:
+
 - `npm run typecheck && npm run lint && npm run format:check && npm test` → all exit 0.
 - `npm run build && node dist/index.js --model gemini/gemini-2.5-pro --dry-run; echo "exit=$?"` — **either outcome below is acceptable; neither is a failure**:
   - a diff is staged → stderr contains `Unsupported model provider: gemini. Supported providers: …` and exit is `4`;
@@ -234,7 +238,7 @@ Machine-checkable. ALL must hold:
 
 - [ ] `grep -c 'PROVIDER_ALIASES\|normalizeProviderId' src/llm/providers.ts` → 0
 - [ ] `grep -c 'providerIds' src/auth/secrets.ts` → 0
-- [ ] `grep -rn "'bedrock'\|'vertex'\|'vertex-anthropic'" src/llm/providers.ts src/auth/secrets.ts` → no matches. (This checks *quoted string* ids only — the unquoted TypeScript identifiers `bedrock`/`vertex`/`vertexAnthropic` in imports and factory bodies are correct and will not match; the new `'google-vertex'`/`'amazon-bedrock'` strings will not false-positive because the quote character precedes `google-`/`amazon-`, not `vertex`/`bedrock`.)
+- [ ] `grep -rn "'bedrock'\|'vertex'\|'vertex-anthropic'" src/llm/providers.ts src/auth/secrets.ts` → no matches. (This checks _quoted string_ ids only — the unquoted TypeScript identifiers `bedrock`/`vertex`/`vertexAnthropic` in imports and factory bodies are correct and will not match; the new `'google-vertex'`/`'amazon-bedrock'` strings will not false-positive because the quote character precedes `google-`/`amazon-`, not `vertex`/`bedrock`.)
 - [ ] Positive presence of the renamed keys: `grep -c "'amazon-bedrock':" src/llm/providers.ts` → 1; `grep -c "'google-vertex':" src/llm/providers.ts` → 1; `grep -c "'google-vertex-anthropic':" src/llm/providers.ts` → 1; `grep -c "id: 'amazon-bedrock'\|id: 'google-vertex'\|id: 'google-vertex-anthropic'" src/auth/secrets.ts` → 3
 - [ ] `grep -c 'Provider Aliases' README.md` → 0
 - [ ] `grep -c 'GEMINI_API_KEY' src/auth/secrets.ts` → unchanged from before (env-key alias preserved)
@@ -249,7 +253,7 @@ Stop and report back (do not improvise) if:
 
 - Any existing test fails because it used an alias spelling or a short id (`bedrock`/`vertex`) — recon found none; a hit means the codebase drifted, so report before rewriting tests.
 - The `@ai-sdk/google-vertex/anthropic` or `@ai-sdk/amazon-bedrock` factory cannot construct hermetically even with dummy env stubs and a single-package mock (same contingency budget as plan 003: more than three mocked packages means the approach needs rethinking).
-- You find any *additional* alias table or provider-id mapping beyond the two documented here (e.g. introduced after `cd2908e`) — the removal must be total or not at all; report the location.
+- You find any _additional_ alias table or provider-id mapping beyond the two documented here (e.g. introduced after `cd2908e`) — the removal must be total or not at all; report the location.
 - `README.md` lines have shifted so much that the table/section edits in Step 4 don't clearly map — re-locate by heading text, and STOP only if the "Provider Aliases" section is already gone or materially different.
 
 ## Maintenance notes

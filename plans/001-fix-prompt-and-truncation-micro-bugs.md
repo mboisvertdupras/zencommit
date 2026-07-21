@@ -43,7 +43,7 @@ zencommit is an AI commit-message CLI: it takes the staged git diff, truncates i
 }
 ```
 
-Inside a template literal, `\\n` produces the two characters `\` and `n`, not a newline. The equivalent code path inside `truncateDiffSmart` does it correctly — `src/llm/truncate.ts:478`: `` const summaryBlock = fileSummary.trim() ? `File summary:\n${fileSummary.trim()}\n` : ''; ``
+Inside a template literal, `\\n` produces the two characters `\` and `n`, not a newline. The equivalent code path inside `truncateDiffSmart` does it correctly — `src/llm/truncate.ts:478`: ``const summaryBlock = fileSummary.trim() ? `File summary:\n${fileSummary.trim()}\n` : '';``
 
 ### Bug 2 — redundant full-diff tokenization
 
@@ -64,7 +64,7 @@ The information needed to compute `truncated` without re-encoding is already pre
 
 - `hunks` (line 493) is the full list of candidate hunks; `selections` (line 503) is what survived the budget. If `selections.length < hunks.length`, content was dropped.
 - `selectHunkLines` (lines 344–382) returns `omittedAdded`/`omittedRemoved` per hunk — if any selected hunk omitted lines, content was dropped. Note the selection loop (lines 507–528) already calls `selectHunkLines` per hunk; you can record whether any selection had omissions there.
-- The smart diff also drops context lines (lines starting with a space) by design — that is *always* true, so "did we drop context lines" is not part of the current `truncated` semantics. Preserve the current semantics: `truncated` is true when selected output tokens are fewer than the full diff's tokens. Dropping any hunk, omitting any +/- line, or hitting the headers-only/summary-only degradation paths each imply that. One subtlety: when ALL hunks are selected with zero omissions, the current expression can still return `true` because the rebuilt smart diff drops context lines and file `index`/`---`/`+++` noise. Decide `truncated` as: `selections.length < hunks.length || anyOmitted` — and accept this as a deliberate, documented semantic tightening (the result now reports whether *change content* was dropped, not whether formatting shrank). Existing tests pin the current behavior; see the test plan.
+- The smart diff also drops context lines (lines starting with a space) by design — that is _always_ true, so "did we drop context lines" is not part of the current `truncated` semantics. Preserve the current semantics: `truncated` is true when selected output tokens are fewer than the full diff's tokens. Dropping any hunk, omitting any +/- line, or hitting the headers-only/summary-only degradation paths each imply that. One subtlety: when ALL hunks are selected with zero omissions, the current expression can still return `true` because the rebuilt smart diff drops context lines and file `index`/`---`/`+++` noise. Decide `truncated` as: `selections.length < hunks.length || anyOmitted` — and accept this as a deliberate, documented semantic tightening (the result now reports whether _change content_ was dropped, not whether formatting shrank). Existing tests pin the current behavior; see the test plan.
 
 ### Bug 3 — negative `availableTokens`
 
@@ -93,24 +93,26 @@ TypeScript ESM, `strict` + `noUncheckedIndexedAccess`. Arrow-function exports (`
 
 ## Commands you will need
 
-| Purpose   | Command                                    | Expected on success |
-|-----------|--------------------------------------------|---------------------|
-| Install   | `npm ci`                                   | exit 0              |
-| Typecheck | `npm run typecheck`                        | exit 0, no output   |
-| Lint      | `npm run lint`                             | exit 0, 0 warnings  |
-| Format    | `npm run format:check`                     | exit 0              |
-| Tests     | `npx vitest run`                           | all pass            |
+| Purpose                       | Command                | Expected on success |
+| ----------------------------- | ---------------------- | ------------------- |
+| Install                       | `npm ci`               | exit 0              |
+| Typecheck                     | `npm run typecheck`    | exit 0, no output   |
+| Lint                          | `npm run lint`         | exit 0, 0 warnings  |
+| Format                        | `npm run format:check` | exit 0              |
+| Tests                         | `npx vitest run`       | all pass            |
 | Full test (builds dist first) | `npm test`             | all pass            |
 
 ## Scope
 
 **In scope** (the only files you should modify):
+
 - `src/commands/default.ts` (one-line string fix)
 - `src/llm/truncate.ts` (truncated-flag computation)
 - `src/llm/tokens.ts` (clamp)
 - `src/llm/truncate.test.ts`, `src/llm/tokens.test.ts` (new cases)
 
 **Out of scope** (do NOT touch, even though they look related):
+
 - `truncateDiffByFile` and its allocation algorithm — works as designed.
 - The hunk-scoring heuristics (`scoreHunk`) — behavior change there alters which hunks models see; not this plan.
 - `src/llm/generate.ts`, prompt templates — unrelated.
@@ -142,7 +144,7 @@ Add a test in `src/llm/tokens.test.ts`: `computeTokenBudget` with `limits = { co
 
 In `src/llm/truncate.ts` `truncateDiffSmart`:
 
-1. In the selection loop (lines 507–528), track two booleans: `anyHunkSkipped` (a hunk failed the budget check at line 521 — set where the `continue` happens) and `anyLinesOmitted` (a *selected* hunk had `omittedAdded + omittedRemoved > 0`).
+1. In the selection loop (lines 507–528), track two booleans: `anyHunkSkipped` (a hunk failed the budget check at line 521 — set where the `continue` happens) and `anyLinesOmitted` (a _selected_ hunk had `omittedAdded + omittedRemoved > 0`).
 2. Change the final return's `truncated` to `anyHunkSkipped || anyLinesOmitted`. The earlier degraded returns (summary-only at 469–476 and 542–546, and the headers-only path setting at 535–540) already hard-code `truncated: true` or imply it — when the headers-only fallback (line 536) is used, `truncated` must also be `true`; ensure that path sets it.
 3. Run the existing suite. If an existing test in `src/llm/truncate.test.ts` asserted `truncated: true` for a case where all hunks fit with no omissions (relying on context-line removal alone), update that assertion to `false` and note the semantic tightening in the commit body.
 
