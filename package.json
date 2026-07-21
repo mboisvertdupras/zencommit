@@ -20,6 +20,7 @@
     "pretest": "npm run build",
     "test": "npm run test:run",
     "test:run": "vitest run",
+    "test:unit": "vitest run --exclude '**/tests/integration/**'",
     "smoke:install-matrix": "node scripts/smoke-install-matrix.mjs",
     "clean": "node scripts/clean-dist.mjs",
     "build:ts": "tsc -p tsconfig.build.json",

@@ -15,6 +15,7 @@
 - `npm run format` — format with Prettier.
 - `npm run format:check` — verify formatting.
 - `npm test` — run Vitest suite (pretest builds `dist/`).
+- `npm run test:unit` — fast unit suite, no build required (integration tests need `npm test`).
 - `npm run build` — clean, compile TS, copy runtime assets, and verify `dist/`.
 - `npm audit --audit-level=low` — run the low-threshold dependency security audit.
 - `npm run smoke:install-matrix` — validate packed-artifact execution for global, `npx`, and local dependency modes.
