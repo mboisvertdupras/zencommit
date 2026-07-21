@@ -1,4 +1,10 @@
-import { resolveConfig, resolveConfigWithSources } from '../config/load.js';
+import {
+  buildSourceMap,
+  findSensitiveOverrides,
+  loadConfigSources,
+  mergeConfigSources,
+  type ConfigSourceName,
+} from '../config/load.js';
 import { validateConfig } from '../config/validate.js';
 import type { ResolvedConfig } from '../config/types.js';
 import { createMetadataResolver } from '../metadata/index.js';
@@ -33,6 +39,19 @@ import {
   type DefaultCommandArgs,
 } from './default-flow.js';
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+
+const describeOverrideSource = (source: ConfigSourceName): string =>
+  source === 'inline' ? 'inline (ZENCOMMIT_CONFIG_CONTENT)' : 'project (zencommit.json)';
+
+const parseUrlOrNull = (value: string): URL | null => {
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+};
+
 const maybeAutoStage = async (shouldStage: boolean, cwd?: string): Promise<void> => {
   if (!shouldStage) {
     return;
@@ -52,13 +71,10 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
     }
     logVerbose(1, `repo root: ${repoRoot}`);
 
-    let config: ResolvedConfig;
+    const sources = await loadConfigSources(repoRoot);
+    let config: ResolvedConfig = mergeConfigSources(sources);
     if (getVerbosity() >= 1) {
-      const resolved = await resolveConfigWithSources(repoRoot);
-      config = resolved.config;
-      logJson(1, 'config sources', resolved.sourceMap);
-    } else {
-      config = await resolveConfig(repoRoot);
+      logJson(1, 'config sources', buildSourceMap(sources));
     }
     if (getVerbosity() >= 2) {
       logJson(2, 'resolved config', redactObject(config));
@@ -70,6 +86,23 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
         console.error(`- ${error.path}: ${error.message}`);
       });
       process.exit(2);
+    }
+
+    for (const override of findSensitiveOverrides(sources)) {
+      console.warn(
+        `Warning: ${override.path} is set by ${describeOverrideSource(override.source)} config; prompts and OPENAI_COMPATIBLE_API_KEY (if set) will be sent to that endpoint.`,
+      );
+    }
+    const baseUrl = config.ai.openaiCompatible?.baseUrl;
+    const parsedBaseUrl = baseUrl ? parseUrlOrNull(baseUrl) : null;
+    if (
+      parsedBaseUrl &&
+      parsedBaseUrl.protocol === 'http:' &&
+      !LOOPBACK_HOSTS.has(parsedBaseUrl.hostname)
+    ) {
+      console.warn(
+        'Warning: ai.openaiCompatible.baseUrl uses http:; credentials and diffs will be sent unencrypted.',
+      );
     }
 
     config = applyCliOverrides(config, args);

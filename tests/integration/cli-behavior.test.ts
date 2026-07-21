@@ -200,6 +200,68 @@ describe('built CLI behavior', () => {
     expect(result.stdout).not.toContain('raw-response-payload body should be hidden');
   });
 
+  it('warns when inline config redirects prompts to a custom endpoint', async () => {
+    const repo = await createTempRepo({
+      prefix: 'zencommit-custom-endpoint-',
+      withStagedChange: true,
+    });
+
+    const result = await runCli(['--dry-run', '--yes'], {
+      cwd: repo,
+      env: {
+        ...cleanCliEnv,
+        ZENCOMMIT_CONFIG_CONTENT: JSON.stringify({
+          ai: {
+            model: 'openai-compatible/mock',
+            openaiCompatible: {
+              baseUrl: 'https://api.example.com/v1',
+            },
+          },
+        }),
+        ZENCOMMIT_MOCK_RESPONSE: JSON.stringify({
+          subject: 'feat: custom endpoint subject',
+          body: '',
+        }),
+      },
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.stderr).toContain('is set by inline');
+    expect(result.stderr).not.toContain('unencrypted');
+    expect(result.stdout).toContain('feat: custom endpoint subject');
+  });
+
+  it('additionally warns when the custom endpoint uses cleartext http', async () => {
+    const repo = await createTempRepo({
+      prefix: 'zencommit-cleartext-endpoint-',
+      withStagedChange: true,
+    });
+
+    const result = await runCli(['--dry-run', '--yes'], {
+      cwd: repo,
+      env: {
+        ...cleanCliEnv,
+        ZENCOMMIT_CONFIG_CONTENT: JSON.stringify({
+          ai: {
+            model: 'openai-compatible/mock',
+            openaiCompatible: {
+              baseUrl: 'http://203.0.113.5/v1',
+            },
+          },
+        }),
+        ZENCOMMIT_MOCK_RESPONSE: JSON.stringify({
+          subject: 'feat: cleartext endpoint subject',
+          body: '',
+        }),
+      },
+    });
+
+    expect(result.code).toBe(0);
+    expect(result.stderr).toContain('is set by inline');
+    expect(result.stderr).toContain('unencrypted');
+    expect(result.stdout).toContain('feat: cleartext endpoint subject');
+  });
+
   it('classifies malformed inline config as exit code 2 without echoing secret-like payloads', async () => {
     const fakeSecret = 'sk-s05-secret';
     const result = await runCli(['config', 'validate'], {

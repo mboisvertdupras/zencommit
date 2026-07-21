@@ -30,7 +30,7 @@ row when done.
 | 005  | Keep API keys out of process argv (keychain writes and `auth login --token`)      | P2       | M      | —                                | DONE   |
 | 006  | Harden the commit-message editor flow (cleanup, fallbacks, honest failures)       | P2       | M      | —                                | DONE   |
 | 007  | CI matrix, audit gate, and a fast local test loop                                 | P2       | S      | —                                | DONE   |
-| 013  | Warn when repo-supplied config redirects prompts/credentials to a custom endpoint | P2       | M      | not concurrent with 001          | TODO   |
+| 013  | Warn when repo-supplied config redirects prompts/credentials to a custom endpoint | P2       | M      | not concurrent with 001          | DONE   |
 | 012  | Classify exit codes with typed errors instead of message regexes                  | P2       | M      | after 004 + 008                  | TODO   |
 | 009  | Make README and AGENTS.md stop claiming things the code doesn't do                | P2       | S      | after 005 + 008 (README)         | TODO   |
 | 010  | Delete the orphaned root entrypoint and dead config-command code                  | P3       | S      | —                                | TODO   |
