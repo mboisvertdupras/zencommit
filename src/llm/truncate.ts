@@ -503,6 +503,8 @@ export const truncateDiffSmart = (
   const selections: HunkSelection[] = [];
   let usedTokens = summaryTokens;
   const selectedFiles = new Set<number>();
+  let anyHunkSkipped = false;
+  let anyLinesOmitted = false;
 
   for (const hunk of hunks) {
     const file = files[hunk.fileIndex]!;
@@ -519,24 +521,28 @@ export const truncateDiffSmart = (
     const hunkTokens = tokensForLines(hunkLines, encoding);
 
     if (usedTokens + headerTokens + hunkTokens > budgetTokens) {
+      anyHunkSkipped = true;
       continue;
     }
 
     selections.push(hunk);
     usedTokens += headerTokens + hunkTokens;
     selectedFiles.add(hunk.fileIndex);
+    if (selectionLines.omittedAdded + selectionLines.omittedRemoved > 0) {
+      anyLinesOmitted = true;
+    }
   }
 
+  let contentDropped = anyHunkSkipped || anyLinesOmitted;
   let diffBody = buildSmartDiff(files, selections, config);
-  let diffTokens = countTokens(diffBody, encoding);
   let combined = `${summaryBlock}${diffBody}`.trim();
   let combinedTokens = countTokens(combined, encoding);
 
   if (combinedTokens > budgetTokens) {
     diffBody = buildHeadersOnlyDiff(files, selections);
-    diffTokens = countTokens(diffBody, encoding);
     combined = `${summaryBlock}${diffBody}`.trim();
     combinedTokens = countTokens(combined, encoding);
+    contentDropped = true;
   }
 
   if (combinedTokens > budgetTokens) {
@@ -548,7 +554,7 @@ export const truncateDiffSmart = (
   return {
     text: combined,
     usedTokens: combinedTokens,
-    truncated: diffTokens < countTokens(diffText, encoding),
+    truncated: contentDropped,
     mode: 'smart',
   };
 };

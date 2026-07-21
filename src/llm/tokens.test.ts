@@ -10,4 +10,9 @@ describe('computeTokenBudget', () => {
     expect(budget.inputMaxTokens).toBe(70);
     expect(budget.availableTokens).toBe(60);
   });
+
+  it('clamps availableTokens to zero when overhead exceeds input limit', () => {
+    const budget = computeTokenBudget({ context: 100, input: 100, output: null }, 50, 500);
+    expect(budget.availableTokens).toBe(0);
+  });
 });

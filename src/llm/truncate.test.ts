@@ -63,4 +63,62 @@ describe('truncateDiffSmart', () => {
     expect(result.text).toContain('+export function test() {}');
     expect(result.text).toContain('... omitted (+1 additions, -0 deletions)');
   });
+
+  it('reports truncated false when the whole diff fits with no omissions', () => {
+    const fittingDiff = `diff --git foo.ts foo.ts
+--- foo.ts
++++ foo.ts
+@@ -1,3 +1,3 @@
+-export const a = 1;
++export const a = 2;
+`;
+    const encoding = getEncodingForModel('openai/gpt-4o');
+    const result = truncateDiffSmart('M foo.ts (+1 -1)', fittingDiff, 200, diffConfig, encoding);
+    freeEncoding(encoding);
+
+    expect(result.mode).toBe('smart');
+    expect(result.truncated).toBe(false);
+    expect(result.text).toContain('+export const a = 2;');
+  });
+
+  it('reports truncated true when a hunk is dropped by the budget', () => {
+    const twoFileDiff = `diff --git foo.ts foo.ts
+--- foo.ts
++++ foo.ts
+@@ -1,3 +1,3 @@
+-export const a = 1;
++export const a = 2;
+diff --git bar.ts bar.ts
+--- bar.ts
++++ bar.ts
+@@ -1,3 +1,3 @@
+-export const b = 1;
++export const b = 2;
+`;
+    const encoding = getEncodingForModel('openai/gpt-4o');
+    const result = truncateDiffSmart('M foo.ts (+1 -1)', twoFileDiff, 45, diffConfig, encoding);
+    freeEncoding(encoding);
+
+    expect(result.mode).toBe('smart');
+    expect(result.truncated).toBe(true);
+  });
+
+  it('reports truncated true when a selected hunk omits lines', () => {
+    const omittingDiff = `diff --git foo.ts foo.ts
+--- foo.ts
++++ foo.ts
+@@ -1,3 +1,5 @@
+-export const a = 1;
++export const a = 2;
++export function test() {}
++const c = 3;
+`;
+    const encoding = getEncodingForModel('openai/gpt-4o');
+    const result = truncateDiffSmart('M foo.ts (+3 -1)', omittingDiff, 200, diffConfig, encoding);
+    freeEncoding(encoding);
+
+    expect(result.mode).toBe('smart');
+    expect(result.truncated).toBe(true);
+    expect(result.text).toContain('... omitted');
+  });
 });

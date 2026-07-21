@@ -45,7 +45,7 @@ export const computeTokenBudget = (
   const outputLimit = limits.output ?? Number.POSITIVE_INFINITY;
   const outputTokens = Math.min(maxOutputTokens, outputLimit);
   const inputMaxTokens = Math.min(inputLimit, contextLimit - outputTokens);
-  const availableTokens = inputMaxTokens - overheadTokens;
+  const availableTokens = Math.max(0, inputMaxTokens - overheadTokens);
   return {
     inputMaxTokens,
     outputTokens,
