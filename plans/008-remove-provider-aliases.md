@@ -88,6 +88,7 @@ const PROVIDER_AUTH_INDEX: Map<string, ProviderAuthConfig> = new Map(
 - `README.md:298-300` — provider-table rows for `bedrock/<model>`, `vertex/<model>`, `vertex-anthropic/<model>`.
 - `README.md:315-327` — the "### Provider Aliases" section (heading through the trailing blank line). **Delete whole section.** Line numbers in this plan are as of `cd2908e` — locate by heading/row text if they have shifted.
 - Verified at plan time: **no test, no config default, and no other source file references any alias form or the three short ids** (`grep -rn "bedrock\|vertex" src tests --include='*.ts'` hits only `providers.ts` and `secrets.ts`; the default model is `openai/gpt-5`). Test churn is confined to files this plan touches/creates.
+- **Reviewer amendment (2026-07-21, during execution)**: the recon claim above missed a message-format dependency — `tests/unit/generate.test.ts` ("reports unsupported provider ids without leaking credentials") asserts the exact pre-change string `Unsupported model provider: unsupported-provider` via `.toBe(...)`. Step 1.4's mandated message expansion breaks that exact match. Correction: `tests/unit/generate.test.ts` is added to the in-scope list for exactly one change — relax that single assertion to `expect(message).toContain('Unsupported model provider: unsupported-provider')` (keeping `expectSecretSafe(message)` and everything else untouched).
 - `tests/unit/secrets.test.ts` exists (injectable-store pattern) — extend it; `src/llm/providers.test.ts` exists **only if plan 003 ran first** (check at execution time).
 
 ### Conventions
@@ -117,6 +118,7 @@ TypeScript ESM strict, arrow-function exports, Prettier + oxlint zero warnings, 
 - `src/auth/secrets.ts`
 - `src/llm/providers.test.ts` (create if absent, update if plan 003 already created it)
 - `tests/unit/secrets.test.ts` (extend)
+- `tests/unit/generate.test.ts` (reviewer amendment — one assertion only; see Current state)
 - `README.md` (provider table + alias section)
 
 **Out of scope** (do NOT touch, even though they look related):

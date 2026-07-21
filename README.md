@@ -289,41 +289,32 @@ zencommit config validate
 
 zencommit supports any provider compatible with the Vercel AI SDK:
 
-| Provider          | Model Format                | Example                                     |
-| ----------------- | --------------------------- | ------------------------------------------- |
-| OpenAI            | `openai/<model>`            | `openai/gpt-4o`                             |
-| Anthropic         | `anthropic/<model>`         | `anthropic/claude-sonnet-4-20250514`        |
-| Google            | `google/<model>`            | `google/gemini-2.5-pro`                     |
-| Azure OpenAI      | `azure/<deployment>`        | `azure/gpt-4o-deployment`                   |
-| AWS Bedrock       | `bedrock/<model>`           | `bedrock/anthropic.claude-3-5-sonnet`       |
-| Google Vertex     | `vertex/<model>`            | `vertex/gemini-2.0-flash`                   |
-| Vertex Anthropic  | `vertex-anthropic/<model>`  | `vertex-anthropic/claude-sonnet-4-20250514` |
-| Groq              | `groq/<model>`              | `groq/llama-3.3-70b-versatile`              |
-| Mistral           | `mistral/<model>`           | `mistral/mistral-large-latest`              |
-| xAI               | `xai/<model>`               | `xai/grok-2`                                |
-| OpenRouter        | `openrouter/<model>`        | `openrouter/anthropic/claude-3-opus`        |
-| Together AI       | `togetherai/<model>`        | `togetherai/meta-llama/Meta-Llama-3-70B`    |
-| Perplexity        | `perplexity/<model>`        | `perplexity/llama-3.1-sonar-large-128k`     |
-| Cohere            | `cohere/<model>`            | `cohere/command-r-plus`                     |
-| Cerebras          | `cerebras/<model>`          | `cerebras/llama3.1-70b`                     |
-| DeepInfra         | `deepinfra/<model>`         | `deepinfra/meta-llama/Llama-2-70b`          |
-| GitLab            | `gitlab/<model>`            | `gitlab/claude-3-5-sonnet`                  |
-| Vercel            | `vercel/<model>`            | `vercel/v0-1.0-md`                          |
-| AI Gateway        | `gateway/<model>`           | `gateway/openai/gpt-4o`                     |
-| OpenAI Compatible | `openai-compatible/<model>` | `openai-compatible/my-model`                |
+| Provider          | Model Format                      | Example                                            |
+| ----------------- | --------------------------------- | -------------------------------------------------- |
+| OpenAI            | `openai/<model>`                  | `openai/gpt-4o`                                    |
+| Anthropic         | `anthropic/<model>`               | `anthropic/claude-sonnet-4-20250514`               |
+| Google            | `google/<model>`                  | `google/gemini-2.5-pro`                            |
+| Azure OpenAI      | `azure/<deployment>`              | `azure/gpt-4o-deployment`                          |
+| AWS Bedrock       | `amazon-bedrock/<model>`          | `amazon-bedrock/anthropic.claude-3-5-sonnet`       |
+| Google Vertex     | `google-vertex/<model>`           | `google-vertex/gemini-2.0-flash`                   |
+| Vertex Anthropic  | `google-vertex-anthropic/<model>` | `google-vertex-anthropic/claude-sonnet-4-20250514` |
+| Groq              | `groq/<model>`                    | `groq/llama-3.3-70b-versatile`                     |
+| Mistral           | `mistral/<model>`                 | `mistral/mistral-large-latest`                     |
+| xAI               | `xai/<model>`                     | `xai/grok-2`                                       |
+| OpenRouter        | `openrouter/<model>`              | `openrouter/anthropic/claude-3-opus`               |
+| Together AI       | `togetherai/<model>`              | `togetherai/meta-llama/Meta-Llama-3-70B`           |
+| Perplexity        | `perplexity/<model>`              | `perplexity/llama-3.1-sonar-large-128k`            |
+| Cohere            | `cohere/<model>`                  | `cohere/command-r-plus`                            |
+| Cerebras          | `cerebras/<model>`                | `cerebras/llama3.1-70b`                            |
+| DeepInfra         | `deepinfra/<model>`               | `deepinfra/meta-llama/Llama-2-70b`                 |
+| GitLab            | `gitlab/<model>`                  | `gitlab/claude-3-5-sonnet`                         |
+| Vercel            | `vercel/<model>`                  | `vercel/v0-1.0-md`                                 |
+| AI Gateway        | `gateway/<model>`                 | `gateway/openai/gpt-4o`                            |
+| OpenAI Compatible | `openai-compatible/<model>`       | `openai-compatible/my-model`                       |
 
-### Provider Aliases
+### Migration note
 
-For convenience, these aliases are also supported:
-
-- `gemini` → `google`
-- `amazon-bedrock`, `aws-bedrock` → `bedrock`
-- `google-vertex`, `google-vertex-ai` → `vertex`
-- `azure-openai` → `azure`
-- `together.ai` → `togetherai`
-- `xai-grok` → `xai`
-- `open-router` → `openrouter`
-- `vercel-ai-gateway`, `ai-gateway` → `gateway`
+Provider ids now have exactly one accepted spelling, matching [models.dev](https://models.dev) provider keys. Three ids were renamed: `bedrock` → `amazon-bedrock`, `vertex` → `google-vertex`, `vertex-anthropic` → `google-vertex-anthropic`. Former aliases (e.g. `gemini`, `aws-bedrock`, `open-router`) are no longer accepted and produce an error listing the supported providers. Ids shown by `zencommit models search` are now always valid `--model` values.
 
 ## Model Discovery
 

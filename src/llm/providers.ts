@@ -24,14 +24,14 @@ const PROVIDER_FACTORIES: Record<string, (modelName: string) => LanguageModel> =
   openai: (modelName) => openai(modelName),
   anthropic: (modelName) => anthropic(modelName),
   google: (modelName) => google(modelName),
-  'vertex-anthropic': (modelName) => vertexAnthropic(modelName),
+  'google-vertex-anthropic': (modelName) => vertexAnthropic(modelName),
   xai: (modelName) => xai(modelName),
   vercel: (modelName) => vercel(modelName),
   azure: (modelName) => azure(modelName),
-  bedrock: (modelName) => bedrock(modelName),
+  'amazon-bedrock': (modelName) => bedrock(modelName),
   groq: (modelName) => groq(modelName),
   deepinfra: (modelName) => deepinfra(modelName),
-  vertex: (modelName) => vertex(modelName),
+  'google-vertex': (modelName) => vertex(modelName),
   mistral: (modelName) => mistral(modelName),
   togetherai: (modelName) => togetherai(modelName),
   cohere: (modelName) => cohere(modelName),
@@ -42,30 +42,8 @@ const PROVIDER_FACTORIES: Record<string, (modelName: string) => LanguageModel> =
   gitlab: (modelName) => gitlab(modelName),
 };
 
-const PROVIDER_ALIASES: Record<string, string> = {
-  'azure-openai': 'azure',
-  'amazon-bedrock': 'bedrock',
-  'aws-bedrock': 'bedrock',
-  'google-vertex': 'vertex',
-  'google-vertex-ai': 'vertex',
-  'google-vertex-anthropic': 'vertex-anthropic',
-  'vertex-anthropic': 'vertex-anthropic',
-  'google-generative-ai': 'google',
-  gemini: 'google',
-  'openai-compatible': 'openai-compatible',
-  openrouter: 'openrouter',
-  'open-router': 'openrouter',
-  gitlab: 'gitlab',
-  'gitlab-ai': 'gitlab',
-  'gitlab-duo': 'gitlab',
-  'together.ai': 'togetherai',
-  'xai-grok': 'xai',
-  'vercel-ai-gateway': 'gateway',
-  'ai-gateway': 'gateway',
-};
-
-const normalizeProviderId = (provider: string): string =>
-  PROVIDER_ALIASES[provider.toLowerCase()] ?? provider.toLowerCase();
+const SUPPORTED_PROVIDERS = (): string =>
+  [...Object.keys(PROVIDER_FACTORIES), 'openai-compatible'].sort().join(', ');
 
 export interface ProviderResolutionOptions {
   openaiCompatible?: {
@@ -83,7 +61,7 @@ export const resolveLanguageModel = (
   if (!rawProvider || !modelName) {
     throw new Error('Model id must be in the format provider/model');
   }
-  const provider = normalizeProviderId(rawProvider);
+  const provider = rawProvider.toLowerCase();
   if (provider === 'openai-compatible') {
     const baseURL = options.openaiCompatible?.baseUrl ?? process.env.OPENAI_COMPATIBLE_BASE_URL;
     if (!baseURL) {
@@ -96,7 +74,9 @@ export const resolveLanguageModel = (
   }
   const factory = PROVIDER_FACTORIES[provider];
   if (!factory) {
-    throw new Error(`Unsupported model provider: ${rawProvider}`);
+    throw new Error(
+      `Unsupported model provider: ${rawProvider}. Supported providers: ${SUPPORTED_PROVIDERS()}`,
+    );
   }
   return factory(modelName);
 };

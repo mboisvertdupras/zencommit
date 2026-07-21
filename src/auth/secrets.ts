@@ -7,7 +7,6 @@ export interface ProviderAuthConfig {
   envKeys: string[];
   required: boolean;
   primaryEnvKey?: string;
-  providerIds?: string[];
 }
 
 const PROVIDER_AUTH_CONFIGS: ProviderAuthConfig[] = [
@@ -30,28 +29,24 @@ const PROVIDER_AUTH_CONFIGS: ProviderAuthConfig[] = [
     envKeys: ['GOOGLE_GENERATIVE_AI_API_KEY', 'GEMINI_API_KEY'],
     required: true,
     primaryEnvKey: 'GOOGLE_GENERATIVE_AI_API_KEY',
-    providerIds: ['google-generative-ai', 'gemini'],
   },
   {
-    id: 'vertex',
+    id: 'google-vertex',
     name: 'Google Vertex AI',
     envKeys: ['GOOGLE_VERTEX_API_KEY'],
     required: false,
-    providerIds: ['google-vertex', 'google-vertex-ai'],
   },
   {
-    id: 'vertex-anthropic',
+    id: 'google-vertex-anthropic',
     name: 'Google Vertex Anthropic',
     envKeys: ['GOOGLE_VERTEX_API_KEY'],
     required: false,
-    providerIds: ['google-vertex-anthropic'],
   },
   {
     id: 'xai',
     name: 'xAI Grok',
     envKeys: ['XAI_API_KEY'],
     required: true,
-    providerIds: ['xai-grok', 'grok'],
   },
   {
     id: 'vercel',
@@ -64,17 +59,15 @@ const PROVIDER_AUTH_CONFIGS: ProviderAuthConfig[] = [
     name: 'Vercel AI Gateway',
     envKeys: ['AI_GATEWAY_API_KEY'],
     required: true,
-    providerIds: ['ai-gateway', 'vercel-ai-gateway'],
   },
   {
     id: 'azure',
     name: 'Azure OpenAI',
     envKeys: ['AZURE_API_KEY'],
     required: true,
-    providerIds: ['azure-openai'],
   },
   {
-    id: 'bedrock',
+    id: 'amazon-bedrock',
     name: 'Amazon Bedrock',
     envKeys: [
       'AWS_ACCESS_KEY_ID',
@@ -83,7 +76,6 @@ const PROVIDER_AUTH_CONFIGS: ProviderAuthConfig[] = [
       'AWS_BEARER_TOKEN_BEDROCK',
     ],
     required: true,
-    providerIds: ['amazon-bedrock', 'aws-bedrock'],
   },
   {
     id: 'groq',
@@ -108,7 +100,6 @@ const PROVIDER_AUTH_CONFIGS: ProviderAuthConfig[] = [
     name: 'Together.ai',
     envKeys: ['TOGETHER_AI_API_KEY'],
     required: true,
-    providerIds: ['together.ai'],
   },
   {
     id: 'cohere',
@@ -133,7 +124,6 @@ const PROVIDER_AUTH_CONFIGS: ProviderAuthConfig[] = [
     name: 'OpenRouter',
     envKeys: ['OPENROUTER_API_KEY'],
     required: true,
-    providerIds: ['open-router'],
   },
   {
     id: 'openai-compatible',
@@ -146,7 +136,6 @@ const PROVIDER_AUTH_CONFIGS: ProviderAuthConfig[] = [
     name: 'GitLab',
     envKeys: ['GITLAB_TOKEN'],
     required: true,
-    providerIds: ['gitlab-ai', 'gitlab-duo'],
   },
 ];
 
@@ -368,10 +357,7 @@ export const deleteSecret = async (envKey: string): Promise<void> => {
 };
 
 const PROVIDER_AUTH_INDEX: Map<string, ProviderAuthConfig> = new Map(
-  PROVIDER_AUTH_CONFIGS.flatMap((config) => {
-    const aliases = config.providerIds ?? [];
-    return [config.id, ...aliases].map((id) => [id.toLowerCase(), config]);
-  }),
+  PROVIDER_AUTH_CONFIGS.map((config) => [config.id, config]),
 );
 
 export const getProviderAuthConfigs = (): ProviderAuthConfig[] => [...PROVIDER_AUTH_CONFIGS];

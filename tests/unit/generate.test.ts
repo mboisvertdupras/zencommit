@@ -244,7 +244,7 @@ describe('generateCommitMessage', () => {
       generateCommitMessage(baseInput({ modelId: 'unsupported-provider/model' })),
     ).rejects.toSatisfy((error: unknown) => {
       const message = (error as Error).message;
-      expect(message).toBe('Unsupported model provider: unsupported-provider');
+      expect(message).toContain('Unsupported model provider: unsupported-provider');
       expectSecretSafe(message);
       return true;
     });
