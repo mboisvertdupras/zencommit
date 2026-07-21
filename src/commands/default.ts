@@ -154,7 +154,7 @@ export const runDefaultCommand = async (args: DefaultCommandArgs): Promise<void>
       }
     } else if (budget.availableTokens <= 0) {
       const fileSummary = await getFileSummary({ mode: effectiveDiffMode, cwd: repoRoot });
-      truncatedText = fileSummary.trim() ? `File summary:\\n${fileSummary.trim()}` : fileList;
+      truncatedText = fileSummary.trim() ? `File summary:\n${fileSummary.trim()}` : fileList;
     } else {
       const truncated = truncateDiffByFile(diffText, budget.availableTokens, encoding);
       truncatedText = truncated.text;

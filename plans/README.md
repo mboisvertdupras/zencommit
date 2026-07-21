@@ -22,7 +22,7 @@ row when done.
 
 | Plan | Title                                                                             | Priority | Effort | Depends on                       | Status |
 | ---- | --------------------------------------------------------------------------------- | -------- | ------ | -------------------------------- | ------ |
-| 001  | Fix three small correctness/perf bugs in the prompt-budget path                   | P1       | S      | —                                | TODO   |
+| 001  | Fix three small correctness/perf bugs in the prompt-budget path                   | P1       | S      | —                                | DONE   |
 | 002  | Make the models.dev metadata fetch unable to hang or fail a commit run            | P1       | S      | —                                | TODO   |
 | 008  | Remove provider aliases — one canonical id per provider, aligned with models.dev  | P2       | M      | —                                | TODO   |
 | 003  | Add unit tests for the untested LLM pure layer (providers, output, prompt)        | P1       | M      | —                                | TODO   |
