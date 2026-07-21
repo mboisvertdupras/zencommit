@@ -26,9 +26,12 @@ const validateEnvKey = (envKey: string): void => {
   }
 };
 
-const resolveModel = (modelId: string, openaiCompatible?: { baseUrl?: string; name?: string }) => {
+const resolveModel = async (
+  modelId: string,
+  openaiCompatible?: { baseUrl?: string; name?: string },
+) => {
   try {
-    return resolveLanguageModel(modelId, { openaiCompatible });
+    return await resolveLanguageModel(modelId, { openaiCompatible });
   } catch {
     return null;
   }
@@ -39,7 +42,7 @@ const verifyCredentials = async (
   timeoutMs = 5000,
   openaiCompatible?: { baseUrl?: string; name?: string },
 ): Promise<boolean> => {
-  const model = resolveModel(modelId, openaiCompatible);
+  const model = await resolveModel(modelId, openaiCompatible);
   if (!model) {
     logVerbose(1, `auth verify: skipping unsupported model ${modelId}`);
     return true;

@@ -39,14 +39,14 @@ describe('resolveLanguageModel', () => {
     'google-vertex/gemini-2.0-flash',
     'google-vertex-anthropic/claude-sonnet-4-20250514',
     'openai/gpt-4o',
-  ])('resolves canonical id %s', (modelId) => {
-    expect(resolveLanguageModel(modelId)).toBeTruthy();
+  ])('resolves canonical id %s', async (modelId) => {
+    await expect(resolveLanguageModel(modelId)).resolves.toBeTruthy();
   });
 
   it.each(['bedrock', 'vertex', 'vertex-anthropic'])(
     'rejects renamed old canonical id %s',
-    (provider) => {
-      expect(() => resolveLanguageModel(`${provider}/m`)).toThrow(
+    async (provider) => {
+      await expect(resolveLanguageModel(`${provider}/m`)).rejects.toThrow(
         new RegExp(`Unsupported model provider: ${provider}.*Supported providers:`),
       );
     },
@@ -66,53 +66,58 @@ describe('resolveLanguageModel', () => {
     'ai-gateway',
     'gitlab-ai',
     'gitlab-duo',
-  ])('rejects deleted alias spelling %s', (provider) => {
-    expect(() => resolveLanguageModel(`${provider}/m`)).toThrow(
+  ])('rejects deleted alias spelling %s', async (provider) => {
+    await expect(resolveLanguageModel(`${provider}/m`)).rejects.toThrow(
       new RegExp(`Unsupported model provider: ${provider}.*Supported providers:`),
     );
   });
 
-  it.each(['OpenAI/gpt-4o', 'Amazon-Bedrock/m'])('folds case for %s', (modelId) => {
-    expect(resolveLanguageModel(modelId)).toBeTruthy();
+  it.each(['OpenAI/gpt-4o', 'Amazon-Bedrock/m'])('folds case for %s', async (modelId) => {
+    await expect(resolveLanguageModel(modelId)).resolves.toBeTruthy();
   });
 
-  it('rejects a model id without a slash', () => {
-    expect(() => resolveLanguageModel('gpt-4o')).toThrow(
+  it('rejects a model id without a slash', async () => {
+    await expect(resolveLanguageModel('gpt-4o')).rejects.toThrow(
       'Model id must be in the format provider/model',
     );
   });
 
-  it('reports the raw provider id for an unsupported provider', () => {
-    expect(() => resolveLanguageModel('nope/whatever')).toThrow(
+  it('reports the raw provider id for an unsupported provider', async () => {
+    await expect(resolveLanguageModel('nope/whatever')).rejects.toThrow(
       /Unsupported model provider: nope\. Supported providers:/,
     );
   });
 
   it.each(['anthropic/claude-sonnet-4-5', 'groq/llama-3.3-70b'])(
     'constructs a model for %s',
-    (modelId) => {
-      expect(resolveLanguageModel(modelId)).toBeTruthy();
+    async (modelId) => {
+      await expect(resolveLanguageModel(modelId)).resolves.toBeTruthy();
     },
   );
 
+  it('resolves a repeated dynamic import on the second call', async () => {
+    await expect(resolveLanguageModel('openai/gpt-4o')).resolves.toBeTruthy();
+    await expect(resolveLanguageModel('openai/gpt-4o')).resolves.toBeTruthy();
+  });
+
   describe('openai-compatible', () => {
-    it('throws when no base url is provided', () => {
-      expect(() => resolveLanguageModel('openai-compatible/m')).toThrow(
+    it('throws when no base url is provided', async () => {
+      await expect(resolveLanguageModel('openai-compatible/m')).rejects.toThrow(
         'OPENAI_COMPATIBLE_BASE_URL is required for openai-compatible models.',
       );
     });
 
-    it('resolves with a base url from options', () => {
-      expect(
+    it('resolves with a base url from options', async () => {
+      await expect(
         resolveLanguageModel('openai-compatible/m', {
           openaiCompatible: { baseUrl: 'https://example.test/v1', name: 'custom' },
         }),
-      ).toBeTruthy();
+      ).resolves.toBeTruthy();
     });
 
-    it('resolves with a base url from the environment', () => {
+    it('resolves with a base url from the environment', async () => {
       process.env.OPENAI_COMPATIBLE_BASE_URL = 'https://example.test/v1';
-      expect(resolveLanguageModel('openai-compatible/m')).toBeTruthy();
+      await expect(resolveLanguageModel('openai-compatible/m')).resolves.toBeTruthy();
     });
   });
 });

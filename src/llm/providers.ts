@@ -1,45 +1,26 @@
-import { bedrock } from '@ai-sdk/amazon-bedrock';
-import { anthropic } from '@ai-sdk/anthropic';
-import { azure } from '@ai-sdk/azure';
-import { cerebras } from '@ai-sdk/cerebras';
-import { cohere } from '@ai-sdk/cohere';
-import { deepinfra } from '@ai-sdk/deepinfra';
-import { gateway } from '@ai-sdk/gateway';
-import { google } from '@ai-sdk/google';
-import { vertex } from '@ai-sdk/google-vertex';
-import { vertexAnthropic } from '@ai-sdk/google-vertex/anthropic';
-import { groq } from '@ai-sdk/groq';
-import { mistral } from '@ai-sdk/mistral';
-import { openai } from '@ai-sdk/openai';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { perplexity } from '@ai-sdk/perplexity';
-import { togetherai } from '@ai-sdk/togetherai';
-import { vercel } from '@ai-sdk/vercel';
-import { xai } from '@ai-sdk/xai';
-import { openrouter } from '@openrouter/ai-sdk-provider';
-import { gitlab } from 'gitlab-ai-provider';
 import type { LanguageModel } from 'ai';
 
-const PROVIDER_FACTORIES: Record<string, (modelName: string) => LanguageModel> = {
-  openai: (modelName) => openai(modelName),
-  anthropic: (modelName) => anthropic(modelName),
-  google: (modelName) => google(modelName),
-  'google-vertex-anthropic': (modelName) => vertexAnthropic(modelName),
-  xai: (modelName) => xai(modelName),
-  vercel: (modelName) => vercel(modelName),
-  azure: (modelName) => azure(modelName),
-  'amazon-bedrock': (modelName) => bedrock(modelName),
-  groq: (modelName) => groq(modelName),
-  deepinfra: (modelName) => deepinfra(modelName),
-  'google-vertex': (modelName) => vertex(modelName),
-  mistral: (modelName) => mistral(modelName),
-  togetherai: (modelName) => togetherai(modelName),
-  cohere: (modelName) => cohere(modelName),
-  cerebras: (modelName) => cerebras(modelName),
-  perplexity: (modelName) => perplexity(modelName),
-  gateway: (modelName) => gateway(modelName),
-  openrouter: (modelName) => openrouter(modelName),
-  gitlab: (modelName) => gitlab(modelName),
+const PROVIDER_FACTORIES: Record<string, (modelName: string) => Promise<LanguageModel>> = {
+  openai: async (m) => (await import('@ai-sdk/openai')).openai(m),
+  anthropic: async (m) => (await import('@ai-sdk/anthropic')).anthropic(m),
+  google: async (m) => (await import('@ai-sdk/google')).google(m),
+  'google-vertex-anthropic': async (m) =>
+    (await import('@ai-sdk/google-vertex/anthropic')).vertexAnthropic(m),
+  xai: async (m) => (await import('@ai-sdk/xai')).xai(m),
+  vercel: async (m) => (await import('@ai-sdk/vercel')).vercel(m),
+  azure: async (m) => (await import('@ai-sdk/azure')).azure(m),
+  'amazon-bedrock': async (m) => (await import('@ai-sdk/amazon-bedrock')).bedrock(m),
+  groq: async (m) => (await import('@ai-sdk/groq')).groq(m),
+  deepinfra: async (m) => (await import('@ai-sdk/deepinfra')).deepinfra(m),
+  'google-vertex': async (m) => (await import('@ai-sdk/google-vertex')).vertex(m),
+  mistral: async (m) => (await import('@ai-sdk/mistral')).mistral(m),
+  togetherai: async (m) => (await import('@ai-sdk/togetherai')).togetherai(m),
+  cohere: async (m) => (await import('@ai-sdk/cohere')).cohere(m),
+  cerebras: async (m) => (await import('@ai-sdk/cerebras')).cerebras(m),
+  perplexity: async (m) => (await import('@ai-sdk/perplexity')).perplexity(m),
+  gateway: async (m) => (await import('@ai-sdk/gateway')).gateway(m),
+  openrouter: async (m) => (await import('@openrouter/ai-sdk-provider')).openrouter(m),
+  gitlab: async (m) => (await import('gitlab-ai-provider')).gitlab(m),
 };
 
 const SUPPORTED_PROVIDERS = (): string =>
@@ -52,10 +33,10 @@ export interface ProviderResolutionOptions {
   };
 }
 
-export const resolveLanguageModel = (
+export const resolveLanguageModel = async (
   modelId: string,
   options: ProviderResolutionOptions = {},
-): LanguageModel => {
+): Promise<LanguageModel> => {
   const [rawProvider, ...rest] = modelId.split('/');
   const modelName = rest.join('/');
   if (!rawProvider || !modelName) {
@@ -70,6 +51,7 @@ export const resolveLanguageModel = (
     const name =
       options.openaiCompatible?.name ?? process.env.OPENAI_COMPATIBLE_NAME ?? 'openai-compatible';
     const apiKey = process.env.OPENAI_COMPATIBLE_API_KEY;
+    const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
     return createOpenAICompatible({ baseURL, name, apiKey })(modelName);
   }
   const factory = PROVIDER_FACTORIES[provider];

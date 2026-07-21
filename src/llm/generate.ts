@@ -119,7 +119,7 @@ const ensureAuth = async (modelId: string): Promise<void> => {
 
 const callModelOnce = async (input: GenerateInput): Promise<CommitMessage> => {
   await ensureAuth(input.modelId);
-  const model = resolveModel(input.modelId, input);
+  const model = await resolveModel(input.modelId, input);
   const modelOptions = buildModelOptions(input);
 
   try {
