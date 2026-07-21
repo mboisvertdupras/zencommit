@@ -32,7 +32,8 @@
 ## Testing Guidelines
 
 - Test runner: Vitest (`npm test`).
-- Unit tests live in `tests/unit/`; integration tests live in `tests/integration/`.
+- Unit tests live in `tests/unit/` or colocated next to the module as `src/**/*.test.ts`; integration tests live in `tests/integration/`. (The build excludes `src/**/*.test.ts`.)
+- `ZENCOMMIT_MOCK_RESPONSE` (JSON string) bypasses the LLM call and is parsed as the model response — used by `tests/integration/cli-behavior.test.ts`.
 - Keep user-facing behavior covered (exit codes `0/2/3/4`, config precedence, auth fallback behavior, dry-run outputs).
 
 ## Commit & Pull Request Guidelines

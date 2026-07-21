@@ -10,7 +10,7 @@ AI-powered git commit message generator. Analyzes your staged changes and genera
 - **Conventional Commits** - Generates messages following conventional commit standards
 - **Interactive Workflow** - Preview, edit, or confirm before committing
 - **Flexible Configuration** - Global, project, and CLI-level configuration options
-- **Secure Credential Storage** - API keys stored in the system secure store (with env fallback)
+- **Secure Credential Storage** - API keys stored in the macOS Keychain (environment variables on other platforms)
 
 ## Installation
 
@@ -127,7 +127,7 @@ zencommit -vv --dry-run
 
 ## Authentication
 
-Manage API keys with the `auth` command. Keys are stored via the secure-store backend and never written to config files.
+Manage API keys with the `auth` command. On macOS, keys are stored in the Keychain and never written to config files. On Linux and Windows, `auth login` is unavailable; supply keys through the environment variables listed below.
 
 ```bash
 # Interactive login
@@ -204,7 +204,6 @@ zencommit config validate
 
 ```json
 {
-  "$schema": "https://zencommit.dev/config.json",
   "ai": {
     "model": "openai/gpt-5",
     "temperature": 0.2,
